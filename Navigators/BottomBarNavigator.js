@@ -3,8 +3,8 @@ import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 const Tab = createBottomTabNavigator();
 
 import MainScreen from "../screens/MainScreen";
-import Chart from "../pages/Chart";
-import Settings from "../pages/Settings";
+import Chart from "../screens/Chart";
+import Settings from "../screens/Settings";
 
 export default function BottomBarNavigator() {
   return (

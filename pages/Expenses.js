@@ -1,4 +1,3 @@
-import { Flatlist } from "react-native";
 import SmallCard from "../components/ui/SmallCard";
 
 export default function Expenses() {

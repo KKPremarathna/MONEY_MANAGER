@@ -15,7 +15,6 @@ export default function BalanceContainer() {
 
 const styles = StyleSheet.create({
   totalBalanceContainer:{
-    margin:20,
     paddingVertical:30,
     paddingHorizontal:120,
     borderWidth:4,
