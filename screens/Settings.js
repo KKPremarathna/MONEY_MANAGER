@@ -67,7 +67,9 @@ export default function Settings() {
           )}
         </View>
         <Text style={[styles.userName, { color: colors.text }]}>{profile?.name || 'Guest User'}</Text>
-        <Text style={[styles.userEmail, { color: colors.textSecondary }]}>{profile?.email || 'Not logged in'}</Text>
+        <Text style={[styles.userEmail, { color: colors.textSecondary }]}>
+          {!profile?.email || profile.email === 'local@offline.com' ? 'Not signed in' : profile.email}
+        </Text>
       </View>
       
       <View style={[styles.groupContainer, { backgroundColor: colors.card, borderColor: colors.border }]}>

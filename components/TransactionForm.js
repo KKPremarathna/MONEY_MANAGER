@@ -1,9 +1,23 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
+import { View, Text, TextInput, StyleSheet, TouchableOpacity, ScrollView, Modal, Alert, FlatList } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useCategories, insertTransaction } from '../src/db/queries';
+import { useCategories, insertTransaction, insertCategory, deleteCategory } from '../src/db/queries';
 import { useNavigation } from '@react-navigation/native';
 import { useAppContext } from '../src/AppContext';
+
+const PRESET_ICONS = [
+  'cart-outline', 'bus-outline', 'fast-food-outline', 'shirt-outline', 
+  'heart-outline', 'gift-outline', 'barbell-outline', 'game-controller-outline', 
+  'book-outline', 'cash-outline', 'card-outline', 'trending-up-outline',
+  'home-outline', 'car-outline', 'medical-outline', 'school-outline',
+  'airplane-outline', 'paw-outline', 'cafe-outline', 'wine-outline'
+];
+
+const PRESET_COLORS = [
+  '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEEAD', 
+  '#D4A5A5', '#9B59B6', '#FF9F43', '#2ECC71', '#F1C40F', 
+  '#E67E22', '#1ABC9C', '#3B82F6', '#EC4899', '#6366F1'
+];
 
 export default function TransactionForm({ type }) {
   const navigation = useNavigation();
@@ -14,9 +28,16 @@ export default function TransactionForm({ type }) {
   const [note, setNote] = useState('');
   const [selectedCategory, setSelectedCategory] = useState(null);
 
+  // Category management states
+  const [isManaging, setIsManaging] = useState(false);
+  const [isAddingCategory, setIsAddingCategory] = useState(false);
+  const [customName, setCustomName] = useState('');
+  const [customColor, setCustomColor] = useState(PRESET_COLORS[0]);
+  const [customIcon, setCustomIcon] = useState(PRESET_ICONS[0]);
+
   const handleSave = async () => {
     if (!amount || isNaN(amount) || !selectedCategory) {
-      alert("Please enter a valid amount and select a category.");
+      Alert.alert("Error", "Please enter a valid amount and select a category.");
       return;
     }
 
@@ -28,6 +49,43 @@ export default function TransactionForm({ type }) {
     });
 
     navigation.getParent()?.goBack();
+  };
+
+  const handleCreateCategory = async () => {
+    if (!customName.trim()) {
+      Alert.alert("Error", "Category name cannot be empty.");
+      return;
+    }
+
+    await insertCategory({
+      name: customName.trim(),
+      type,
+      color: customColor,
+      icon: customIcon
+    });
+
+    setCustomName('');
+    setIsAddingCategory(false);
+  };
+
+  const handleDeleteCategory = (catId, catName) => {
+    Alert.alert(
+      "Delete Category",
+      `Are you sure you want to delete the category "${catName}"?`,
+      [
+        { text: "Cancel", style: "cancel" },
+        { 
+          text: "Delete", 
+          style: "destructive", 
+          onPress: async () => {
+            if (selectedCategory === catId) {
+              setSelectedCategory(null);
+            }
+            await deleteCategory(catId);
+          }
+        }
+      ]
+    );
   };
 
   return (
@@ -47,33 +105,74 @@ export default function TransactionForm({ type }) {
       </View>
 
       <View style={styles.inputGroup}>
-        <Text style={[styles.label, { color: colors.textSecondary }]}>Select Category</Text>
+        <View style={styles.labelRow}>
+          <Text style={[styles.label, { color: colors.textSecondary, marginBottom: 0 }]}>Select Category</Text>
+          <TouchableOpacity onPress={() => setIsManaging(!isManaging)}>
+            <Text style={[styles.manageText, { color: colors.primary }]}>
+              {isManaging ? "Done" : "Manage"}
+            </Text>
+          </TouchableOpacity>
+        </View>
+        
         <View style={styles.categoryGrid}>
           {categories.map((cat) => {
             const isSelected = selectedCategory === cat.id;
             return (
-              <TouchableOpacity
-                key={cat.id}
-                style={[
-                  styles.categoryItem,
-                  isSelected && styles.selectedCategory
-                ]}
-                onPress={() => setSelectedCategory(cat.id)}
-                activeOpacity={0.8}
-              >
-                <View style={[
-                  styles.iconContainer, 
-                  { backgroundColor: cat.color },
-                  isSelected && { borderWidth: 3, borderColor: colors.text }
-                ]}>
-                  <Ionicons name={cat.icon || 'list'} size={24} color="white" />
-                </View>
-                <Text style={[styles.categoryName, { color: colors.text }, isSelected && { fontWeight: '700' }]} numberOfLines={1}>
-                  {cat.name}
-                </Text>
-              </TouchableOpacity>
+              <View key={cat.id} style={styles.categoryItemWrapper}>
+                <TouchableOpacity
+                  style={[
+                    styles.categoryItem,
+                    isSelected && styles.selectedCategory,
+                    isManaging && { opacity: 0.8 }
+                  ]}
+                  onPress={() => {
+                    if (isManaging) {
+                      handleDeleteCategory(cat.id, cat.name);
+                    } else {
+                      setSelectedCategory(cat.id);
+                    }
+                  }}
+                  activeOpacity={0.8}
+                >
+                  <View style={[
+                    styles.iconContainer, 
+                    { backgroundColor: cat.color },
+                    isSelected && { borderWidth: 3, borderColor: colors.text }
+                  ]}>
+                    <Ionicons name={cat.icon || 'list'} size={24} color="white" />
+                  </View>
+                  <Text style={[styles.categoryName, { color: colors.text }, isSelected && { fontWeight: '700' }]} numberOfLines={1}>
+                    {cat.name}
+                  </Text>
+                </TouchableOpacity>
+
+                {isManaging && (
+                  <TouchableOpacity 
+                    style={styles.deleteBadge} 
+                    onPress={() => handleDeleteCategory(cat.id, cat.name)}
+                  >
+                    <Ionicons name="close" size={14} color="white" />
+                  </TouchableOpacity>
+                )}
+              </View>
             );
           })}
+
+          {!isManaging && (
+            <TouchableOpacity
+              style={styles.categoryItem}
+              onPress={() => setIsAddingCategory(true)}
+              activeOpacity={0.8}
+            >
+              <View style={[
+                styles.iconContainer, 
+                { backgroundColor: colors.surface, borderStyle: 'dashed', borderWidth: 2, borderColor: colors.border }
+              ]}>
+                <Ionicons name="add" size={24} color={colors.textSecondary} />
+              </View>
+              <Text style={[styles.categoryName, { color: colors.textSecondary }]}>Add Custom</Text>
+            </TouchableOpacity>
+          )}
         </View>
       </View>
 
@@ -93,6 +192,78 @@ export default function TransactionForm({ type }) {
       <TouchableOpacity style={[styles.saveButton, { backgroundColor: colors.primary }]} onPress={handleSave}>
         <Text style={styles.saveButtonText}>Save Transaction</Text>
       </TouchableOpacity>
+
+      {/* Add Custom Category Modal */}
+      <Modal
+        visible={isAddingCategory}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setIsAddingCategory(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { backgroundColor: colors.background }]}>
+            <View style={styles.modalHeader}>
+              <TouchableOpacity onPress={() => setIsAddingCategory(false)}>
+                <Text style={{ color: colors.textSecondary, fontSize: 16 }}>Cancel</Text>
+              </TouchableOpacity>
+              <Text style={[styles.modalTitle, { color: colors.text }]}>New Category</Text>
+              <TouchableOpacity onPress={handleCreateCategory}>
+                <Text style={{ color: colors.primary, fontSize: 16, fontWeight: '700' }}>Create</Text>
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView contentContainerStyle={{ padding: 20 }}>
+              <Text style={[styles.modalLabel, { color: colors.textSecondary }]}>Name</Text>
+              <View style={[styles.inputWrapper, { borderColor: colors.border, backgroundColor: colors.card, marginBottom: 20 }]}>
+                <TextInput
+                  style={[styles.input, { color: colors.text }]}
+                  placeholder="Category Name"
+                  placeholderTextColor={colors.textSecondary}
+                  value={customName}
+                  onChangeText={setCustomName}
+                  maxLength={15}
+                />
+              </View>
+
+              <Text style={[styles.modalLabel, { color: colors.textSecondary }]}>Color</Text>
+              <View style={styles.presetsRow}>
+                {PRESET_COLORS.map((c) => (
+                  <TouchableOpacity
+                    key={c}
+                    style={[
+                      styles.colorBubble,
+                      { backgroundColor: c },
+                      customColor === c && { borderWidth: 3, borderColor: colors.text }
+                    ]}
+                    onPress={() => setCustomColor(c)}
+                  />
+                ))}
+              </View>
+
+              <Text style={[styles.modalLabel, { color: colors.textSecondary, marginTop: 20 }]}>Icon</Text>
+              <View style={styles.presetsRow}>
+                {PRESET_ICONS.map((i) => (
+                  <TouchableOpacity
+                    key={i}
+                    style={[
+                      styles.iconBubble,
+                      { backgroundColor: colors.card, borderColor: colors.border },
+                      customIcon === i && { backgroundColor: customColor, borderColor: customColor }
+                    ]}
+                    onPress={() => setCustomIcon(i)}
+                  >
+                    <Ionicons 
+                      name={i} 
+                      size={20} 
+                      color={customIcon === i ? 'white' : colors.text} 
+                    />
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
     </ScrollView>
   );
 }
@@ -104,6 +275,16 @@ const styles = StyleSheet.create({
   },
   inputGroup: {
     marginBottom: 24,
+  },
+  labelRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  manageText: {
+    fontSize: 14,
+    fontWeight: '600',
   },
   label: {
     fontSize: 13,
@@ -135,9 +316,13 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-start',
     paddingVertical: 5,
   },
+  categoryItemWrapper: {
+    position: 'relative',
+    width: '22%',
+  },
   categoryItem: {
     alignItems: 'center',
-    width: '22%',
+    width: '100%',
     marginBottom: 10,
     opacity: 0.5,
   },
@@ -161,6 +346,18 @@ const styles = StyleSheet.create({
     fontSize: 11,
     textAlign: 'center',
   },
+  deleteBadge: {
+    position: 'absolute',
+    top: -2,
+    right: 2,
+    backgroundColor: '#EF4444',
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+    elevation: 3,
+  },
   saveButton: {
     padding: 16,
     borderRadius: 16,
@@ -176,6 +373,56 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: 16,
     fontWeight: '700',
+  },
+  // Modal Styles
+  modalOverlay: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    backgroundColor: 'rgba(0,0,0,0.5)',
+  },
+  modalContent: {
+    height: '75%',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    overflow: 'hidden',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+  },
+  modalLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 10,
+  },
+  presetsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+    marginBottom: 10,
+  },
+  colorBubble: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+  },
+  iconBubble: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    borderWidth: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
   }
 });
 

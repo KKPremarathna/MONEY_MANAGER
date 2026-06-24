@@ -101,3 +101,11 @@ export async function updateUserProfile(id, data) {
 export async function deleteUserProfile() {
   await db.delete(users);
 }
+
+export async function insertCategory(data) {
+  await db.insert(categories).values(data);
+}
+
+export async function deleteCategory(id) {
+  await db.delete(categories).where(eq(categories.id, id));
+}
