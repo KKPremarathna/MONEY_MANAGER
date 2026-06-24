@@ -1,11 +1,5 @@
-import SmallCard from "../components/ui/SmallCard";
+import TransactionList from "../components/TransactionList";
 
 export default function Expenses() {
-  return (
-    <SmallCard
-      category={"Travel"}
-      imageSource={require("../assets/images/plane.png")}
-      money={5000}
-    />
-  );
+  return <TransactionList type="expense" />;
 }

@@ -1,12 +1,5 @@
-import SmallCard from "../components/ui/SmallCard";
-import Expenses from "./Expenses";
-import Income from "./Incomes";
+import TransactionList from "../components/TransactionList";
 
 export default function BothExpensesIncomes() {
-  return (
-    <>
-    <Expenses/>
-    <Income/>
-    </>
-  );
+  return <TransactionList type={null} />;
 }

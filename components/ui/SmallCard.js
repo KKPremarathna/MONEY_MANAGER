@@ -1,13 +1,18 @@
-import { View, Text, StyleSheet, Image } from "react-native";
+import { View, Text, StyleSheet } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import { useAppContext } from "../../src/AppContext";
 
-export default function SmallCard({ category, imageSource, money }) {
+export default function SmallCard({ category, icon, color, money }) {
+  const { currency } = useAppContext();
+  const currencySymbol = currency === 'USD' ? '$' : 'Rs.';
+
   return (
     <View style={styles.container}>
       <View style={styles.leftGroup}>
-        <Image source={imageSource} style={styles.image} />
-        <Text>{category}</Text>
+        <Ionicons name={icon || 'list'} size={24} color={color || 'black'} style={styles.icon} />
+        <Text style={styles.categoryText}>{category}</Text>
       </View>
-      <Text>Rs.{money}</Text>
+      <Text style={styles.moneyText}>{currencySymbol}{money}</Text>
     </View>
   );
 }
@@ -31,11 +36,19 @@ const styles = StyleSheet.create({
   },
   leftGroup: {
     flexDirection: "row",
+    alignItems: "center",
+    width: "50%",
   },
-  image: {
-    height: 20,
-    width: 20,
-    justifyContent: "center",
-    marginRight: 10,
+  icon: {
+    marginRight: 15,
   },
+  categoryText: {
+    fontSize: 16,
+    fontWeight: "600",
+  },
+  moneyText: {
+    fontSize: 16,
+    fontWeight: "bold",
+    color: "#333",
+  }
 });

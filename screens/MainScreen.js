@@ -3,14 +3,18 @@ import BalanceContainer from "../components/ui/BalanceContainer";
 import IncomeExpeneseDefault from "./IncomeExpenseDefault";
 import MainTitle from "../components/MainTitle";
 
+import { useNavigation } from "@react-navigation/native";
+
 export default function MainScreen() {
+
+  const navigation = useNavigation();
   return (
     <View style={styles.container}>
       <MainTitle>MAIN MENU</MainTitle>
 
       <View style={styles.topSection}>
         <BalanceContainer />
-        <Text style={styles.dateText}>Date : 2026 FEB 01</Text>
+        <Text style={styles.dateText}>Date: {new Date().toLocaleDateString('en-GB', { year: 'numeric', month: 'short', day: 'numeric' }).toUpperCase()}</Text>
       </View>
 
       <View style={styles.tabsWrapper}>
@@ -18,7 +22,7 @@ export default function MainScreen() {
       </View>
       <Pressable
         style={styles.fab}
-        onPress={() => console.log("Open Add Modal!")}
+        onPress={() => navigation.navigate("AddTransaction")}
       >
         <Text>+</Text>
       </Pressable>
