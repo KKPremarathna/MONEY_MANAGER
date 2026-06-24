@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { 
   StyleSheet, 
-  Text, 
   View, 
   FlatList, 
   TouchableOpacity, 
@@ -9,6 +8,7 @@ import {
   TextInput, 
   ScrollView
 } from "react-native";
+import Text from "../components/Text";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useAppContext } from "../src/AppContext";

@@ -1,6 +1,7 @@
-import { Text, View, Image, StyleSheet, TouchableOpacity, Switch } from "react-native";
+import { View, Image, StyleSheet, TouchableOpacity, Switch } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAppContext } from "../src/AppContext";
+import Text from "../components/Text";
 import { useUserProfile, resetDatabase, updateUserProfile } from '../src/db/queries';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
@@ -8,7 +9,7 @@ import * as LocalAuthentication from 'expo-local-authentication';
 
 export default function Settings() {
   const insets = useSafeAreaInsets();
-  const { currency, colors, forceReset, showAlert } = useAppContext();
+  const { currency, colors, forceReset, showAlert, fontSizeMode, setFontSizeMode } = useAppContext();
   const profile = useUserProfile();
   const navigation = useNavigation();
 
@@ -74,6 +75,12 @@ export default function Settings() {
       label: 'Themes',
       icon: 'color-palette-outline',
       onPress: () => navigation.navigate('ThemeSelection')
+    },
+    {
+      id: 'fontSize',
+      label: `Text Size: ${fontSizeMode.charAt(0).toUpperCase() + fontSizeMode.slice(1)}`,
+      icon: 'text-outline',
+      onPress: () => navigation.navigate('FontSize')
     },
     {
       id: 'biometrics',

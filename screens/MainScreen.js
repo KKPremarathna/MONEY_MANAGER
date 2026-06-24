@@ -1,5 +1,6 @@
-import { View, Text, StyleSheet, Pressable } from "react-native";
+import { View, StyleSheet, Pressable } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import Text from "../components/Text";
 import BalanceContainer from "../components/ui/BalanceContainer";
 import IncomeExpeneseDefault from "./IncomeExpenseDefault";
 import { useAppContext } from "../src/AppContext";

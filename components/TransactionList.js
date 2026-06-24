@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { FlatList, View, Text, StyleSheet, TouchableOpacity, Modal, TextInput, ScrollView, Pressable, Animated } from "react-native";
+import { FlatList, View, StyleSheet, TouchableOpacity, Modal, TextInput, ScrollView, Pressable, Animated } from "react-native";
+import Text from "./Text";
 import { Ionicons } from "@expo/vector-icons";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import SmallCard from "./ui/SmallCard";

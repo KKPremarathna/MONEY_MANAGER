@@ -18,6 +18,7 @@ import CurrenciesScreen from "./screens/Currencies";
 import ThemeSelectionScreen from "./screens/ThemeSelection";
 import RemindersScreen from "./screens/Reminders";
 import LoginScreen from "./screens/Login";
+import FontSizeScreen from "./screens/FontSize";
 
 import { db, seedDatabase } from './src/db';
 import migrations from './drizzle/migrations';
@@ -183,6 +184,12 @@ function AppContent() {
             name="Login"
             component={LoginScreen}
             options={{ headerShown: false, presentation: 'modal' }}
+          />
+
+          <Stack.Screen
+            name="FontSize"
+            component={FontSizeScreen}
+            options={{ headerShown: false }}
           />
         </Stack.Navigator>
       </NavigationContainer>

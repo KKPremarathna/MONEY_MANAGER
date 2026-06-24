@@ -20,6 +20,7 @@ export default function Reminders() {
 
   useEffect(() => {
     checkPermissions();
+    checkExistingReminders();
   }, []);
 
   const checkPermissions = async () => {
@@ -29,6 +30,19 @@ export default function Reminders() {
       if (newStatus !== 'granted') {
         showAlert('Permission required', 'Please enable notifications in your phone settings.');
       }
+    }
+  };
+
+  const checkExistingReminders = async () => {
+    try {
+      const scheduled = await Notifications.getAllScheduledNotificationsAsync();
+      if (scheduled && scheduled.length > 0) {
+        setIsReminderSet(true);
+      } else {
+        setIsReminderSet(false);
+      }
+    } catch (error) {
+      console.log('Error checking scheduled reminders:', error);
     }
   };
 
@@ -58,6 +72,26 @@ export default function Reminders() {
     showAlert("Reminder Cancelled", "Your daily reminder has been turned off.");
   };
 
+  const sendTestReminder = async () => {
+    const { status } = await Notifications.getPermissionsAsync();
+    if (status !== 'granted') {
+      showAlert('Permission required', 'Please enable notifications in your settings.');
+      return;
+    }
+
+    await Notifications.scheduleNotificationAsync({
+      content: {
+        title: "Test Reminder works! 🚀",
+        body: "This is a test notification from Money Manager. Everything is configured correctly!",
+      },
+      trigger: {
+        seconds: 5,
+      },
+    });
+
+    showAlert("Test Scheduled", "A test notification will arrive in 5 seconds. Lock your device or put the app in the background to see it!");
+  };
+
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={[styles.header, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
@@ -84,6 +118,13 @@ export default function Reminders() {
             <Text style={styles.buttonText}>Enable Daily Reminder</Text>
           </TouchableOpacity>
         )}
+
+        <TouchableOpacity 
+          style={[styles.button, styles.testBtn, { marginTop: 15, borderColor: colors.border, borderWidth: 1 }]} 
+          onPress={sendTestReminder}
+        >
+          <Text style={[styles.buttonText, { color: colors.text }]}>Send Test Reminder (5s)</Text>
+        </TouchableOpacity>
       </View>
     </View>
   );

@@ -1,7 +1,8 @@
-import React, { createContext, useState, useContext, useEffect } from 'react';
+import React, { createContext, useState, useContext, useEffect, useRef } from 'react';
 import { Modal, Text, View, StyleSheet, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { themes } from './theme';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const AppContext = createContext();
 
@@ -23,9 +24,38 @@ export function AppProvider({ children, forceReset }) {
   const [theme, setTheme] = useState('light'); // 'light' or 'dark'
   const [activeTab, setActiveTab] = useState('All');
   const [selectedCategory, setSelectedCategory] = useState(null);
+  const [fontSizeMode, setFontSizeMode] = useState('medium'); // 'small', 'medium', 'large'
 
   // Custom premium alert state
   const [alertConfig, setAlertConfig] = useState(null);
+
+  // Load font size preference on mount
+  useEffect(() => {
+    const loadFontSize = async () => {
+      try {
+        const savedSize = await AsyncStorage.getItem('MM_FONT_SIZE');
+        if (savedSize) {
+          setFontSizeMode(savedSize);
+        }
+      } catch (err) {
+        console.log('Failed to load font size:', err);
+      }
+    };
+    loadFontSize();
+  }, []);
+
+  // Update scale factor and save to storage
+  useEffect(() => {
+    let scale = 1.0;
+    if (fontSizeMode === 'small') scale = 0.85;
+    if (fontSizeMode === 'large') scale = 1.15;
+    
+    global.fontSizeScale = scale;
+    
+    AsyncStorage.setItem('MM_FONT_SIZE', fontSizeMode).catch((err) =>
+      console.log('Failed to save font size:', err)
+    );
+  }, [fontSizeMode]);
 
   // Auto-reset category selection on filter or date change
   useEffect(() => {
@@ -71,7 +101,9 @@ export function AppProvider({ children, forceReset }) {
       setActiveTab,
       selectedCategory,
       setSelectedCategory,
-      showAlert
+      showAlert,
+      fontSizeMode,
+      setFontSizeMode
     }}>
       {children}
 
