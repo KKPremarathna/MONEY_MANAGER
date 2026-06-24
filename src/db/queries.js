@@ -2,6 +2,7 @@ import { useLiveQuery } from 'drizzle-orm/expo-sqlite';
 import { db } from './index';
 import { transactions, categories, users, defaultCategories } from './schema';
 import { eq, desc, sum, gte, lte, and } from 'drizzle-orm';
+import { syncUp, deleteRemoteTransaction, deleteRemoteCategory } from './syncEngine';
 
 // Hook to get all transactions
 export function useTransactions(type = null) {
@@ -65,19 +66,23 @@ export function useBalance() {
 export async function insertTransaction(data) {
   await db.insert(transactions).values({
     ...data,
-    date: data.date || new Date()
+    date: data.date || new Date(),
+    synced: false
   });
+  syncUp().catch(err => console.log('Sync up failed background:', err));
 }
 
 export async function deleteTransaction(id) {
   await db.delete(transactions).where(eq(transactions.id, id)).execute();
+  deleteRemoteTransaction(id).catch(err => console.log('Remote delete failed background:', err));
 }
 
 export async function updateTransaction(id, data) {
   await db.update(transactions)
-    .set(data)
+    .set({ ...data, synced: false })
     .where(eq(transactions.id, id))
     .execute();
+  syncUp().catch(err => console.log('Sync up failed background:', err));
 }
 
 export function useCategories(type) {
@@ -105,18 +110,21 @@ export async function deleteUserProfile() {
 }
 
 export async function insertCategory(data) {
-  await db.insert(categories).values(data);
+  await db.insert(categories).values({ ...data, synced: false });
+  syncUp().catch(err => console.log('Sync up failed background:', err));
 }
 
 export async function deleteCategory(id) {
   await db.delete(categories).where(eq(categories.id, id));
+  deleteRemoteCategory(id).catch(err => console.log('Remote delete failed background:', err));
 }
 
 export async function updateCategoryBudget(id, budget, budgetType) {
   await db.update(categories)
-    .set({ budget, budgetType })
+    .set({ budget, budgetType, synced: false })
     .where(eq(categories.id, id))
     .execute();
+  syncUp().catch(err => console.log('Sync up failed background:', err));
 }
 
 export async function getCategorySpentForMonth(categoryId, year, month) {

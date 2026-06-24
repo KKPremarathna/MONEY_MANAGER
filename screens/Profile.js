@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TextInput, StyleSheet, TouchableOpacity, Image } from 'react-native';
+import { View, Text, TextInput, StyleSheet, TouchableOpacity, Image, ActivityIndicator } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { useUserProfile, updateUserProfile, createUserProfile, deleteUserProfile } from '../src/db/queries';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAppContext } from '../src/AppContext';
+import { supabase, isSupabaseConfigured } from '../src/db/supabase';
+import { uploadAvatar, clearLocalData } from '../src/db/syncEngine';
 
 export default function Profile() {
   const { colors, showAlert } = useAppContext();
@@ -13,6 +15,7 @@ export default function Profile() {
 
   const [name, setName] = useState('');
   const [imageUri, setImageUri] = useState(null);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (profile) {
@@ -40,18 +43,53 @@ export default function Profile() {
       return;
     }
     
-    if (profile) {
-      await updateUserProfile(profile.id, { name, imageUri });
-    } else {
-      await createUserProfile(name, 'local@offline.com', imageUri);
+    setSaving(true);
+
+    try {
+      let finalImageUri = imageUri;
+      
+      // If user is connected to Supabase Cloud, upload the avatar
+      if (isSupabaseConfigured() && profile?.email && profile.email !== 'local@offline.com') {
+        if (imageUri && (imageUri.startsWith('file:') || imageUri.startsWith('content:') || !imageUri.startsWith('http'))) {
+          const publicUrl = await uploadAvatar(imageUri);
+          if (!publicUrl) {
+            throw new Error('Failed to upload profile picture to cloud storage.');
+          }
+          finalImageUri = publicUrl;
+          await supabase.auth.updateUser({
+            data: {
+              display_name: name,
+              avatar_url: publicUrl
+            }
+          });
+        } else {
+          await supabase.auth.updateUser({
+            data: {
+              display_name: name
+            }
+          });
+        }
+      }
+
+      if (profile) {
+        await updateUserProfile(profile.id, { name, imageUri: finalImageUri });
+      } else {
+        await createUserProfile(name, 'local@offline.com', finalImageUri);
+      }
+      
+      showAlert('Success', 'Profile updated successfully.');
+      navigation.goBack();
+    } catch (error) {
+      showAlert('Error', error.message || 'Failed to save changes.');
+    } finally {
+      setSaving(false);
     }
-    navigation.goBack();
   };
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={[styles.header, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
+        <TouchableOpacity onPress={() => navigation.goBack()} disabled={saving}>
           <Ionicons name="arrow-back" size={28} color={colors.text} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: colors.text }]}>Edit Profile</Text>
@@ -59,7 +97,7 @@ export default function Profile() {
       </View>
 
       <View style={styles.content}>
-        <TouchableOpacity style={styles.imageContainer} onPress={pickImage}>
+        <TouchableOpacity style={styles.imageContainer} onPress={pickImage} disabled={saving}>
           {imageUri ? (
             <Image source={{ uri: imageUri }} style={[styles.profileImage, { borderColor: colors.border }]} />
           ) : (
@@ -83,19 +121,28 @@ export default function Profile() {
           value={name}
           onChangeText={setName}
           placeholderTextColor={colors.textSecondary}
+          editable={!saving}
         />
 
-        <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
-          <Text style={styles.saveButtonText}>SAVE CHANGES</Text>
+        <TouchableOpacity style={[styles.saveButton, { opacity: saving ? 0.7 : 1 }]} onPress={handleSave} disabled={saving}>
+          {saving ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
+            <Text style={styles.saveButtonText}>SAVE CHANGES</Text>
+          )}
         </TouchableOpacity>
 
         <TouchableOpacity 
           style={styles.logoutButton} 
+          disabled={saving}
           onPress={async () => {
-            showAlert("Log Out", "Are you sure you want to log out? Local profile data will be cleared.", [
+            showAlert("Log Out", "Are you sure you want to log out? Cloud sessions will close and local transaction cache will be cleared.", [
               { text: "Cancel", style: "cancel" },
               { text: "Log Out", style: "destructive", onPress: async () => {
-                  await deleteUserProfile();
+                  if (isSupabaseConfigured()) {
+                    await supabase.auth.signOut();
+                  }
+                  await clearLocalData();
                   navigation.navigate('Root');
               }}
             ]);
