@@ -1,5 +1,6 @@
-import { StyleSheet, Text, View, TouchableOpacity } from "react-native";
-import { SafeAreaProvider } from "react-native-safe-area-context";
+import { StyleSheet, Text, View, TouchableOpacity, ScrollView } from "react-native";
+import Svg, { Circle } from "react-native-svg";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import TopBarNavigator from "../Navigators/TopBarNavigator";
 
 import Expenses from "../pages/Expenses";
@@ -14,7 +15,8 @@ import { useTransactions } from "../src/db/queries";
 import { Ionicons } from "@expo/vector-icons";
 
 export default function Chart() {
-  const { filter, setFilter, referenceDate, setReferenceDate, colors, getCurrencySymbol } = useAppContext();
+  const insets = useSafeAreaInsets();
+  const { filter, setFilter, referenceDate, setReferenceDate, colors, getCurrencySymbol, activeTab } = useAppContext();
   const allTransactions = useTransactions(null);
 
   const transactions = allTransactions.filter(t => {
@@ -37,6 +39,7 @@ export default function Chart() {
     return true;
   });
 
+  // Expense breakdown
   const expenses = transactions.filter(t => t.type === 'expense');
   const totalExpenses = expenses.reduce((sum, t) => sum + t.amount, 0);
 
@@ -55,6 +58,27 @@ export default function Chart() {
   });
 
   const categoryBreakdown = Object.values(categoryMap).sort((a, b) => b.amount - a.amount);
+
+  // Income breakdown
+  const incomes = transactions.filter(t => t.type === 'income');
+  const totalIncomes = incomes.reduce((sum, t) => sum + t.amount, 0);
+
+  const incomeCategoryMap = {};
+  incomes.forEach(t => {
+    const catName = t.categoryName || 'Other';
+    if (!incomeCategoryMap[catName]) {
+      incomeCategoryMap[catName] = {
+        name: catName,
+        amount: 0,
+        color: t.categoryColor || '#999',
+        icon: t.categoryIcon || 'list',
+      };
+    }
+    incomeCategoryMap[catName].amount += t.amount;
+  });
+
+  const incomeCategoryBreakdown = Object.values(incomeCategoryMap).sort((a, b) => b.amount - a.amount);
+
   const currencySymbol = getCurrencySymbol();
 
   const handlePrevDate = () => {
@@ -93,6 +117,87 @@ export default function Chart() {
     return 'All Time History';
   };
 
+  const renderSegmentedDonut = (breakdown, total, label) => {
+    const radius = 34;
+    const strokeWidth = 9;
+    const circumference = 2 * Math.PI * radius;
+    const gapSize = total > 0 && breakdown.length > 1 ? 3 : 0;
+
+    let currentOffset = 0;
+    const textValue = `${currencySymbol}${total.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
+    // Dynamically scale down font size when numbers grow
+    const valFontSize = textValue.length > 9 ? 8.5 : textValue.length > 7 ? 10 : 12;
+
+    return (
+      <View style={styles.donutContainer}>
+        <Svg width="90" height="90" viewBox="0 0 90 90" style={styles.svgContainer}>
+          {breakdown.map((item, idx) => {
+            const pct = (item.amount / total) * 100;
+            const segmentCircumference = (item.amount / total) * circumference;
+            const strokeDasharray = `${Math.max(0, segmentCircumference - gapSize)} ${circumference}`;
+            const strokeDashoffset = -currentOffset;
+            currentOffset += segmentCircumference;
+
+            return (
+              <Circle
+                key={idx}
+                cx="45"
+                cy="45"
+                r={radius}
+                stroke={item.color}
+                strokeWidth={strokeWidth}
+                fill="transparent"
+                strokeDasharray={strokeDasharray}
+                strokeDashoffset={strokeDashoffset}
+              />
+            );
+          })}
+        </Svg>
+        
+        <View style={styles.centerTextContainer}>
+          <Text style={[styles.centerLabel, { color: colors.textSecondary }]}>{label}</Text>
+          <Text style={[styles.centerValue, { color: colors.text, fontSize: valFontSize }]} numberOfLines={1}>
+            {textValue}
+          </Text>
+        </View>
+      </View>
+    );
+  };
+
+  const renderCharts = () => {
+    const showExp = (activeTab === 'BothExpensesIncomes' || activeTab === 'Expenses') && totalExpenses > 0;
+    const showInc = (activeTab === 'BothExpensesIncomes' || activeTab === 'Income') && totalIncomes > 0;
+
+    if (showExp && showInc) {
+      return (
+        <View style={styles.sideBySideRow}>
+          <View style={styles.singleChartWrapper}>
+            <Text style={[styles.chartSubTitle, { color: colors.text }]}>Expenses</Text>
+            {renderSegmentedDonut(categoryBreakdown, totalExpenses, "EXPENSES")}
+          </View>
+
+          <View style={styles.singleChartWrapper}>
+            <Text style={[styles.chartSubTitle, { color: colors.text }]}>Incomes</Text>
+            {renderSegmentedDonut(incomeCategoryBreakdown, totalIncomes, "INCOMES")}
+          </View>
+        </View>
+      );
+    } else if (showExp) {
+      return (
+        <View style={styles.chartBodyColumn}>
+          {renderSegmentedDonut(categoryBreakdown, totalExpenses, "EXPENSES")}
+        </View>
+      );
+    } else if (showInc) {
+      return (
+        <View style={styles.chartBodyColumn}>
+          {renderSegmentedDonut(incomeCategoryBreakdown, totalIncomes, "INCOMES")}
+        </View>
+      );
+    }
+    return null;
+  };
+
   const transactionalTabs = [
     {
       name: "BothExpensesIncomes",
@@ -104,8 +209,11 @@ export default function Chart() {
   ];
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <MainTitle>HISTORY</MainTitle>
+    <View style={[styles.container, { backgroundColor: colors.background, paddingTop: insets.top }]}>
+      <View style={styles.screenHeader}>
+        <Text style={[styles.screenTitle, { color: colors.text }]}>History</Text>
+        <Text style={[styles.screenSubtitle, { color: colors.textSecondary }]}>Breakdown analysis</Text>
+      </View>
       <View style={[styles.buttonContainer, { backgroundColor: colors.surface }]}>
         <TouchableOpacity 
           style={[
@@ -161,55 +269,19 @@ export default function Chart() {
         </View>
       )}
 
-      {totalExpenses > 0 && (
+      {((activeTab === 'BothExpensesIncomes' && (totalExpenses > 0 || totalIncomes > 0)) ||
+        (activeTab === 'Expenses' && totalExpenses > 0) ||
+        (activeTab === 'Income' && totalIncomes > 0)) && (
         <View style={[styles.chartContainer, { backgroundColor: colors.surface }]}>
-          <Text style={[styles.chartTitle, { color: colors.text }]}>Expense Breakdown</Text>
-          
-          <View style={[styles.progressBarContainer, { backgroundColor: colors.border }]}>
-            {categoryBreakdown.map((item, index) => {
-              const percentage = (item.amount / totalExpenses) * 100;
-              return (
-                <View 
-                  key={index}
-                  style={{
-                    width: `${percentage}%`,
-                    height: '100%',
-                    backgroundColor: item.color,
-                  }}
-                />
-              );
-            })}
-          </View>
-
-          <View style={styles.legendContainer}>
-            {categoryBreakdown.slice(0, 4).map((item, index) => {
-              const percentage = ((item.amount / totalExpenses) * 100).toFixed(0);
-              return (
-                <View key={index} style={styles.legendItem}>
-                  <View style={[styles.iconWrapper, { backgroundColor: item.color + '20' }]}>
-                    <Ionicons name={item.icon} size={14} color={item.color} />
-                  </View>
-                  <View style={styles.legendTextContainer}>
-                    <Text style={[styles.legendName, { color: colors.text }]} numberOfLines={1}>
-                      {item.name}
-                    </Text>
-                    <Text style={[styles.legendPercentage, { color: colors.textSecondary }]}>
-                      {percentage}% • {currencySymbol}{item.amount.toFixed(0)}
-                    </Text>
-                  </View>
-                </View>
-              );
-            })}
-          </View>
+          <Text style={[styles.chartTitle, { color: colors.text }]}>Breakdown Analysis</Text>
+          {renderCharts()}
         </View>
       )}
 
-      <SafeAreaProvider>
-        <TopBarNavigator
-          initialRoute="BothExpensesIncomes"
-          screen={transactionalTabs}
-        />
-      </SafeAreaProvider>
+      <TopBarNavigator
+        initialRoute="BothExpensesIncomes"
+        screen={transactionalTabs}
+      />
     </View>
   );
 }
@@ -217,6 +289,21 @@ export default function Chart() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  screenHeader: {
+    paddingHorizontal: 20,
+    paddingTop: 15,
+    paddingBottom: 5,
+  },
+  screenTitle: {
+    fontSize: 22,
+    fontWeight: "800",
+    letterSpacing: 0.3,
+  },
+  screenSubtitle: {
+    fontSize: 12,
+    fontWeight: "500",
+    marginTop: 2,
   },
   buttonContainer: {
     flexDirection: "row",
@@ -234,51 +321,104 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   chartContainer: {
-    margin: 15,
-    padding: 15,
+    marginHorizontal: 15,
+    marginVertical: 8,
+    padding: 10,
     borderRadius: 12,
   },
   chartTitle: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: 'bold',
     marginBottom: 10,
   },
-  progressBarContainer: {
-    flexDirection: 'row',
-    height: 12,
-    borderRadius: 6,
-    overflow: 'hidden',
-    marginBottom: 15,
-  },
-  legendContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-  },
-  legendItem: {
+  chartBodyRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    width: '48%',
-    marginBottom: 10,
+    justifyContent: 'space-around',
+    marginTop: 10,
   },
-  iconWrapper: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+  sideBySideRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginTop: 10,
+  },
+  singleChartWrapper: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  chartSubTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    marginBottom: 10,
+    textAlign: 'center',
+  },
+  donutContainer: {
+    width: 100,
+    height: 100,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 8,
+    alignSelf: 'center',
   },
-  legendTextContainer: {
-    flex: 1,
+  svgContainer: {
+    transform: [{ rotate: '-90deg' }],
   },
-  legendName: {
-    fontSize: 13,
+  centerTextContainer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  centerLabel: {
+    fontSize: 7.5,
     fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
-  legendPercentage: {
-    fontSize: 11,
-    marginTop: 2,
+  centerValue: {
+    fontWeight: '800',
+    marginTop: 1,
+  },
+  chartBodyColumn: {
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 10,
+  },
+  chartLegendGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    gap: 8,
+    marginTop: 20,
+    paddingHorizontal: 10,
+  },
+  horizontalLegendContainer: {
+    marginTop: 10,
+    width: '100%',
+  },
+  horizontalLegendContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingHorizontal: 10,
+  },
+  chartLegendGridRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  dotIndicator: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  legendNameText: {
+    fontSize: 12,
+    fontWeight: '600',
   },
   paginationRow: {
     flexDirection: 'row',

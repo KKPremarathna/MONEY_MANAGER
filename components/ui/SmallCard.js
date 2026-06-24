@@ -11,7 +11,7 @@ export default function SmallCard({ category, icon, color, money, type }) {
   const amountPrefix = isIncome ? '+' : '-';
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.card, borderColor: colors.border }]}>
+    <View style={[styles.container, { backgroundColor: colors.card, borderColor: colors.border, overflow: 'hidden' }]}>
       <View style={styles.leftGroup}>
         <View style={[styles.iconContainer, { backgroundColor: (color || colors.primary) + '15' }]}>
           <Ionicons name={icon || 'list'} size={20} color={color || colors.primary} />
@@ -23,6 +23,7 @@ export default function SmallCard({ category, icon, color, money, type }) {
       <Text style={[styles.moneyText, { color: amountColor }]}>
         {amountPrefix}{currencySymbol}{parseFloat(money || 0).toFixed(2)}
       </Text>
+      <View style={[styles.leftColorIndicator, { backgroundColor: color || colors.primary }]} />
     </View>
   );
 }
@@ -57,6 +58,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     marginRight: 12,
+    marginLeft: 4, // Clean alignment inset
   },
   categoryText: {
     fontSize: 15,
@@ -66,6 +68,14 @@ const styles = StyleSheet.create({
   moneyText: {
     fontSize: 15,
     fontWeight: "700",
+  },
+  leftColorIndicator: {
+    position: "absolute",
+    top: 12,
+    left: 8,
+    bottom: 12,
+    width: 4,
+    borderRadius: 2,
   }
 });
 

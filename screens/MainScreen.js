@@ -1,4 +1,5 @@
 import { View, Text, StyleSheet, Pressable } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import BalanceContainer from "../components/ui/BalanceContainer";
 import IncomeExpeneseDefault from "./IncomeExpenseDefault";
 import { useAppContext } from "../src/AppContext";
@@ -7,6 +8,7 @@ import { useUserProfile } from "../src/db/queries";
 import { Ionicons } from "@expo/vector-icons";
 
 export default function MainScreen() {
+  const insets = useSafeAreaInsets();
   const { colors } = useAppContext();
   const navigation = useNavigation();
   const profile = useUserProfile();
@@ -18,7 +20,7 @@ export default function MainScreen() {
   });
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
+    <View style={[styles.container, { backgroundColor: colors.background, paddingTop: insets.top }]}>
       <View style={styles.headerRow}>
         <View>
           <Text style={[styles.greetingText, { color: colors.textSecondary }]}>Welcome back,</Text>

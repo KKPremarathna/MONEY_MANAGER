@@ -1,10 +1,12 @@
 import { Text, View, Image, StyleSheet, Alert, TouchableOpacity } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAppContext } from "../src/AppContext";
 import { useUserProfile, resetDatabase } from '../src/db/queries';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 
 export default function Settings() {
+  const insets = useSafeAreaInsets();
   const { currency, colors, forceReset } = useAppContext();
   const profile = useUserProfile();
   const navigation = useNavigation();
@@ -77,7 +79,11 @@ export default function Settings() {
   ];
 
   return (
-    <View style={[styles.rootContainer, { backgroundColor: colors.background }]}>
+    <View style={[styles.rootContainer, { backgroundColor: colors.background, paddingTop: insets.top }]}>
+      <View style={styles.screenHeader}>
+        <Text style={[styles.screenTitle, { color: colors.text }]}>Settings</Text>
+        <Text style={[styles.screenSubtitle, { color: colors.textSecondary }]}>App preferences & profile</Text>
+      </View>
       <View style={styles.profileSection}>
         <View style={[styles.ImageContainer, { borderColor: colors.border, backgroundColor: colors.surface }]}>
           {profile?.imageUri ? (
@@ -127,10 +133,24 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingHorizontal: 20,
   },
+  screenHeader: {
+    paddingTop: 15,
+    paddingBottom: 5,
+  },
+  screenTitle: {
+    fontSize: 22,
+    fontWeight: "800",
+    letterSpacing: 0.3,
+  },
+  screenSubtitle: {
+    fontSize: 12,
+    fontWeight: "500",
+    marginTop: 2,
+  },
   profileSection: {
     alignItems: "center",
-    marginTop: 30,
-    marginBottom: 30,
+    marginTop: 15,
+    marginBottom: 20,
   },
   ImageContainer: {
     width: 90,

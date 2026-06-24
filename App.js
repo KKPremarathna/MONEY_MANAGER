@@ -6,6 +6,7 @@ import { NavigationContainer, DefaultTheme, DarkTheme } from "@react-navigation/
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { useMigrations } from 'drizzle-orm/expo-sqlite/migrator';
 
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import BottomBarNavigator from "./Navigators/BottomBarNavigator";
 import AddExpensesIncomes from "./screens/AddExpensesIncomes";
 import ProfileScreen from "./screens/Profile";
@@ -52,10 +53,7 @@ function AppContent() {
           <Stack.Screen
             name="Root"
             component={BottomBarNavigator}
-            options={{
-              title: "MONEY MANAGER",
-              headerTitleAlign: "center",
-            }}
+            options={{ headerShown: false }}
           />
 
           <Stack.Screen
@@ -134,9 +132,11 @@ export default function App() {
   }
 
   return (
-    <AppProvider key={resetKey} forceReset={forceReset}>
-      <AppContent />
-    </AppProvider>
+    <SafeAreaProvider>
+      <AppProvider key={resetKey} forceReset={forceReset}>
+        <AppContent />
+      </AppProvider>
+    </SafeAreaProvider>
   );
 }
 

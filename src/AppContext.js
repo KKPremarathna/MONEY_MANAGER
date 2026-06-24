@@ -19,6 +19,7 @@ export function AppProvider({ children, forceReset }) {
   const [referenceDate, setReferenceDate] = useState(new Date());
   const [currency, setCurrency] = useState('LKR'); // 'LKR' or 'USD'
   const [theme, setTheme] = useState('light'); // 'light' or 'dark'
+  const [activeTab, setActiveTab] = useState('All');
 
   const changeFilter = (newFilter) => {
     setFilter(newFilter);
@@ -40,7 +41,9 @@ export function AppProvider({ children, forceReset }) {
       theme, 
       setTheme, 
       colors,
-      forceReset
+      forceReset,
+      activeTab,
+      setActiveTab
     }}>
       {children}
     </AppContext.Provider>
