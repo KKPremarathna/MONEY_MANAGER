@@ -1,26 +1,32 @@
 import { useLiveQuery } from 'drizzle-orm/expo-sqlite';
 import { db } from './index';
-import { transactions, categories, users } from './schema';
-import { eq, desc, sum, gte, and } from 'drizzle-orm';
+import { transactions, categories, users, defaultCategories } from './schema';
+import { eq, desc, sum, gte, lte, and } from 'drizzle-orm';
 
 // Hook to get all transactions
-export function useTransactions(type = null, dateFilter = 'all') {
+export function useTransactions(type = null, dateFilter = 'all', referenceDate = new Date()) {
   let conditions = [];
 
   if (type) {
     conditions.push(eq(transactions.type, type));
   }
 
-  const now = new Date();
+  const ref = new Date(referenceDate);
   if (dateFilter === 'daily') {
-    const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+    const startOfDay = new Date(ref.getFullYear(), ref.getMonth(), ref.getDate()).getTime();
+    const endOfDay = startOfDay + 24 * 60 * 60 * 1000 - 1;
     conditions.push(gte(transactions.date, new Date(startOfDay)));
+    conditions.push(lte(transactions.date, new Date(endOfDay)));
   } else if (dateFilter === 'monthly') {
-    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
+    const startOfMonth = new Date(ref.getFullYear(), ref.getMonth(), 1).getTime();
+    const endOfMonth = new Date(ref.getFullYear(), ref.getMonth() + 1, 0, 23, 59, 59, 999).getTime();
     conditions.push(gte(transactions.date, new Date(startOfMonth)));
+    conditions.push(lte(transactions.date, new Date(endOfMonth)));
   } else if (dateFilter === 'yearly') {
-    const startOfYear = new Date(now.getFullYear(), 0, 1).getTime();
+    const startOfYear = new Date(ref.getFullYear(), 0, 1).getTime();
+    const endOfYear = new Date(ref.getFullYear(), 11, 31, 23, 59, 59, 999).getTime();
     conditions.push(gte(transactions.date, new Date(startOfYear)));
+    conditions.push(lte(transactions.date, new Date(endOfYear)));
   }
 
   let query = db.select({
@@ -108,4 +114,19 @@ export async function insertCategory(data) {
 
 export async function deleteCategory(id) {
   await db.delete(categories).where(eq(categories.id, id));
+}
+
+export async function resetDatabase() {
+  try {
+    await db.delete(transactions).execute();
+    await db.delete(categories).execute();
+    await db.delete(users).execute();
+
+    for (const cat of defaultCategories) {
+      await db.insert(categories).values(cat).execute();
+    }
+  } catch (error) {
+    console.error("Failed to reset database:", error);
+    throw error;
+  }
 }

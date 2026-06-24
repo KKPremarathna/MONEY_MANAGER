@@ -1,11 +1,11 @@
 import { Text, View, Image, StyleSheet, Alert, TouchableOpacity } from "react-native";
 import { useAppContext } from "../src/AppContext";
-import { useUserProfile } from '../src/db/queries';
+import { useUserProfile, resetDatabase } from '../src/db/queries';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 
 export default function Settings() {
-  const { currency, colors } = useAppContext();
+  const { currency, colors, forceReset } = useAppContext();
   const profile = useUserProfile();
   const navigation = useNavigation();
 
@@ -45,6 +45,34 @@ export default function Settings() {
       label: 'Reminder Settings',
       icon: 'notifications-outline',
       onPress: () => navigation.navigate('Reminders')
+    },
+    {
+      id: 'reset',
+      label: 'Reset App Data',
+      icon: 'trash-outline',
+      onPress: () => {
+        Alert.alert(
+          'Reset Data',
+          'Are you sure you want to delete all transactions, custom categories, and user profile data? This will restore the database to a fresh state and cannot be undone.',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            { 
+              text: 'Reset Database', 
+              style: 'destructive', 
+              onPress: async () => {
+                try {
+                  await resetDatabase();
+                  Alert.alert('Reset Complete', 'All data has been wiped. You can fresh start now!', [
+                    { text: 'OK', onPress: () => forceReset() }
+                  ]);
+                } catch (err) {
+                  Alert.alert('Error', 'Failed to reset database: ' + err.message);
+                }
+              }
+            }
+          ]
+        );
+      }
     }
   ];
 

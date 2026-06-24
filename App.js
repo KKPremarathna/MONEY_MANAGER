@@ -1,5 +1,5 @@
 import './polyfill';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { StatusBar } from "expo-status-bar";
 import { StyleSheet, Text, View, ActivityIndicator } from "react-native";
 import { NavigationContainer, DefaultTheme, DarkTheme } from "@react-navigation/native";
@@ -104,7 +104,12 @@ function AppContent() {
 }
 
 export default function App() {
+  const [resetKey, setResetKey] = useState(0);
   const { success, error } = useMigrations(db, migrations);
+
+  const forceReset = () => {
+    setResetKey(prev => prev + 1);
+  };
 
   useEffect(() => {
     if (success) {
@@ -129,7 +134,7 @@ export default function App() {
   }
 
   return (
-    <AppProvider>
+    <AppProvider key={resetKey} forceReset={forceReset}>
       <AppContent />
     </AppProvider>
   );

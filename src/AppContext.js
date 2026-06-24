@@ -14,16 +14,34 @@ const CURRENCIES = {
   'JPY': '¥'
 };
 
-export function AppProvider({ children }) {
+export function AppProvider({ children, forceReset }) {
   const [filter, setFilter] = useState('daily'); // 'daily', 'monthly', 'yearly', 'all'
+  const [referenceDate, setReferenceDate] = useState(new Date());
   const [currency, setCurrency] = useState('LKR'); // 'LKR' or 'USD'
   const [theme, setTheme] = useState('light'); // 'light' or 'dark'
+
+  const changeFilter = (newFilter) => {
+    setFilter(newFilter);
+    setReferenceDate(new Date());
+  };
 
   const getCurrencySymbol = () => CURRENCIES[currency] || '$';
   const colors = themes[theme] || themes.light;
 
   return (
-    <AppContext.Provider value={{ filter, setFilter, currency, setCurrency, getCurrencySymbol, theme, setTheme, colors }}>
+    <AppContext.Provider value={{ 
+      filter, 
+      setFilter: changeFilter, 
+      referenceDate, 
+      setReferenceDate, 
+      currency, 
+      setCurrency, 
+      getCurrencySymbol, 
+      theme, 
+      setTheme, 
+      colors,
+      forceReset
+    }}>
       {children}
     </AppContext.Provider>
   );

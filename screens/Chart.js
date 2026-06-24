@@ -14,8 +14,8 @@ import { useTransactions } from "../src/db/queries";
 import { Ionicons } from "@expo/vector-icons";
 
 export default function Chart() {
-  const { filter, setFilter, colors, getCurrencySymbol } = useAppContext();
-  const transactions = useTransactions(null, filter);
+  const { filter, setFilter, referenceDate, setReferenceDate, colors, getCurrencySymbol } = useAppContext();
+  const transactions = useTransactions(null, filter, referenceDate);
 
   const expenses = transactions.filter(t => t.type === 'expense');
   const totalExpenses = expenses.reduce((sum, t) => sum + t.amount, 0);
@@ -36,6 +36,42 @@ export default function Chart() {
 
   const categoryBreakdown = Object.values(categoryMap).sort((a, b) => b.amount - a.amount);
   const currencySymbol = getCurrencySymbol();
+
+  const handlePrevDate = () => {
+    const nextDate = new Date(referenceDate);
+    if (filter === 'daily') {
+      nextDate.setDate(nextDate.getDate() - 1);
+    } else if (filter === 'monthly') {
+      nextDate.setMonth(nextDate.getMonth() - 1);
+    } else if (filter === 'yearly') {
+      nextDate.setFullYear(nextDate.getFullYear() - 1);
+    }
+    setReferenceDate(nextDate);
+  };
+
+  const handleNextDate = () => {
+    const nextDate = new Date(referenceDate);
+    if (filter === 'daily') {
+      nextDate.setDate(nextDate.getDate() + 1);
+    } else if (filter === 'monthly') {
+      nextDate.setMonth(nextDate.getMonth() + 1);
+    } else if (filter === 'yearly') {
+      nextDate.setFullYear(nextDate.getFullYear() + 1);
+    }
+    setReferenceDate(nextDate);
+  };
+
+  const getFormattedRange = () => {
+    const d = new Date(referenceDate);
+    if (filter === 'daily') {
+      return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+    } else if (filter === 'monthly') {
+      return d.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
+    } else if (filter === 'yearly') {
+      return d.getFullYear().toString();
+    }
+    return 'All Time History';
+  };
 
   const transactionalTabs = [
     {
@@ -92,6 +128,18 @@ export default function Chart() {
           <Text style={[styles.filterText, { color: colors.text }, filter === 'all' && { color: '#fff' }]}>All Time</Text>
         </TouchableOpacity>
       </View>
+
+      {filter !== 'all' && (
+        <View style={styles.paginationRow}>
+          <TouchableOpacity style={[styles.navBtn, { borderColor: colors.border }]} onPress={handlePrevDate}>
+            <Ionicons name="chevron-back" size={20} color={colors.text} />
+          </TouchableOpacity>
+          <Text style={[styles.rangeLabel, { color: colors.text }]}>{getFormattedRange()}</Text>
+          <TouchableOpacity style={[styles.navBtn, { borderColor: colors.border }]} onPress={handleNextDate}>
+            <Ionicons name="chevron-forward" size={20} color={colors.text} />
+          </TouchableOpacity>
+        </View>
+      )}
 
       {totalExpenses > 0 && (
         <View style={[styles.chartContainer, { backgroundColor: colors.surface }]}>
@@ -211,6 +259,25 @@ const styles = StyleSheet.create({
   legendPercentage: {
     fontSize: 11,
     marginTop: 2,
+  },
+  paginationRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    marginVertical: 10,
+  },
+  navBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    borderWidth: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  rangeLabel: {
+    fontSize: 16,
+    fontWeight: '700',
   },
 });
 
