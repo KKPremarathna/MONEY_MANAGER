@@ -1,30 +1,46 @@
 import { View, Text, StyleSheet, Pressable } from "react-native";
 import BalanceContainer from "../components/ui/BalanceContainer";
 import IncomeExpeneseDefault from "./IncomeExpenseDefault";
-import MainTitle from "../components/MainTitle";
-
+import { useAppContext } from "../src/AppContext";
 import { useNavigation } from "@react-navigation/native";
+import { useUserProfile } from "../src/db/queries";
+import { Ionicons } from "@expo/vector-icons";
 
 export default function MainScreen() {
-
+  const { colors } = useAppContext();
   const navigation = useNavigation();
+  const profile = useUserProfile();
+
+  const formattedDate = new Date().toLocaleDateString('en-GB', { 
+    weekday: 'short', 
+    day: 'numeric', 
+    month: 'short' 
+  });
+
   return (
-    <View style={styles.container}>
-      <MainTitle>MAIN MENU</MainTitle>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <View style={styles.headerRow}>
+        <View>
+          <Text style={[styles.greetingText, { color: colors.textSecondary }]}>Welcome back,</Text>
+          <Text style={[styles.profileName, { color: colors.text }]}>{profile?.name || 'Guest User'}</Text>
+        </View>
+        <Text style={[styles.dateText, { color: colors.textSecondary, backgroundColor: colors.surface }]}>
+          {formattedDate}
+        </Text>
+      </View>
 
       <View style={styles.topSection}>
         <BalanceContainer />
-        <Text style={styles.dateText}>Date: {new Date().toLocaleDateString('en-GB', { year: 'numeric', month: 'short', day: 'numeric' }).toUpperCase()}</Text>
       </View>
 
-      <View style={styles.tabsWrapper}>
+      <View style={[styles.tabsWrapper, { backgroundColor: colors.background }]}>
         <IncomeExpeneseDefault />
       </View>
       <Pressable
-        style={styles.fab}
+        style={[styles.fab, { backgroundColor: colors.primary }]}
         onPress={() => navigation.navigate("AddTransaction")}
       >
-        <Text>+</Text>
+        <Ionicons name="add" size={28} color="white" />
       </Pressable>
     </View>
   );
@@ -33,38 +49,55 @@ export default function MainScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "white",
+  },
+  headerRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: 20,
+    paddingTop: 15,
+    paddingBottom: 10,
+  },
+  greetingText: {
+    fontSize: 13,
+    fontWeight: "500",
+  },
+  profileName: {
+    fontSize: 20,
+    fontWeight: "700",
+    marginTop: 2,
+  },
+  dateText: {
+    fontSize: 12,
+    fontWeight: "600",
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 12,
+    overflow: "hidden",
   },
   topSection: {
     alignItems: "center",
-    paddingBottom: 20,
-  },
-  dateText: {
-    marginTop: 10,
-    fontWeight: "bold",
+    paddingBottom: 10,
+    paddingTop: 10,
   },
   tabsWrapper: {
     flex: 1,
-    borderWidth: 4,
-    margin: 20,
-    borderRadius: 8,
+    marginTop: 10,
   },
-  // 3. The FAB styling
   fab: {
-    position: "absolute", // Detaches from normal layout
-    bottom: 20,
-    right: 20,
-    backgroundColor: "#e55a54", // The red color from your design
-    width: 60,
-    height: 60,
-    borderRadius: 30, // Makes it a perfect circle
+    position: "absolute",
+    bottom: 24,
+    right: 24,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
     justifyContent: "center",
     alignItems: "center",
-    elevation: 5, // Android shadow
-    // iOS shadow
+    elevation: 4,
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
   },
 });
+

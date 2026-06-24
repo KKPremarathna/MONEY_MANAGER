@@ -2,17 +2,27 @@ import { View, Text, StyleSheet } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useAppContext } from "../../src/AppContext";
 
-export default function SmallCard({ category, icon, color, money }) {
-  const { currency } = useAppContext();
-  const currencySymbol = currency === 'USD' ? '$' : 'Rs.';
+export default function SmallCard({ category, icon, color, money, type }) {
+  const { getCurrencySymbol, colors } = useAppContext();
+  const currencySymbol = getCurrencySymbol();
+
+  const isIncome = type === 'income';
+  const amountColor = isIncome ? '#10B981' : '#EF4444';
+  const amountPrefix = isIncome ? '+' : '-';
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.card, borderColor: colors.border }]}>
       <View style={styles.leftGroup}>
-        <Ionicons name={icon || 'list'} size={24} color={color || 'black'} style={styles.icon} />
-        <Text style={styles.categoryText}>{category}</Text>
+        <View style={[styles.iconContainer, { backgroundColor: (color || colors.primary) + '15' }]}>
+          <Ionicons name={icon || 'list'} size={20} color={color || colors.primary} />
+        </View>
+        <Text style={[styles.categoryText, { color: colors.text }]} numberOfLines={1}>
+          {category}
+        </Text>
       </View>
-      <Text style={styles.moneyText}>{currencySymbol}{money}</Text>
+      <Text style={[styles.moneyText, { color: amountColor }]}>
+        {amountPrefix}{currencySymbol}{parseFloat(money || 0).toFixed(2)}
+      </Text>
     </View>
   );
 }
@@ -20,35 +30,42 @@ export default function SmallCard({ category, icon, color, money }) {
 const styles = StyleSheet.create({
   container: {
     flexDirection: "row",
-    justifyContent: "space-around",
+    justifyContent: "space-between",
     alignItems: "center",
-    marginHorizontal: 10,
-    margin: 10,
-    padding: 8,
-    borderWidth: 2,
-    borderRadius: 10,
-    backgroundColor: "white",
-    elevation: 4,
+    marginHorizontal: 16,
+    marginVertical: 6,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderWidth: 1,
+    borderRadius: 16,
+    elevation: 2,
     shadowColor: '#000', 
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
     shadowRadius: 3,
   },
   leftGroup: {
     flexDirection: "row",
     alignItems: "center",
-    width: "50%",
+    flex: 1,
+    marginRight: 10,
   },
-  icon: {
-    marginRight: 15,
+  iconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 12,
   },
   categoryText: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: "600",
+    flex: 1,
   },
   moneyText: {
-    fontSize: 16,
-    fontWeight: "bold",
-    color: "#333",
+    fontSize: 15,
+    fontWeight: "700",
   }
 });
+

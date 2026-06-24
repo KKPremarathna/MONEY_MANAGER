@@ -9,6 +9,7 @@ import { useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons"; // For the top right icon
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import TopBarNavigator from "../Navigators/TopBarNavigator";
+import { useAppContext } from "../src/AppContext";
 
 import TransactionForm from "../components/TransactionForm";
 
@@ -17,6 +18,7 @@ const IncomeFormTab = () => <TransactionForm type="income" />;
 
 export default function AddExpensesIncomes() {
   const navigation = useNavigation();
+  const { colors } = useAppContext();
 
   const transactionalTabs = [
     { name: "Expenses", component: ExpenseFormTab, label: "Expenses" },
@@ -31,14 +33,14 @@ export default function AddExpensesIncomes() {
         onPress={() => navigation.goBack()}
       />
 
-      <View style={styles.sheetContainer}>
+      <View style={[styles.sheetContainer, { backgroundColor: colors.background }]}>
         <View style={styles.header}>
           <TouchableOpacity onPress={() => navigation.goBack()}>
-            <Text style={styles.headerText}>Cancel</Text>
+            <Text style={[styles.headerText, { color: colors.textSecondary }]}>Cancel</Text>
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Add</Text>
+          <Text style={[styles.headerTitle, { color: colors.text }]}>Add</Text>
           <TouchableOpacity>
-            <Ionicons name="time-outline" size={24} color="black" />
+            <Ionicons name="time-outline" size={24} color={colors.text} />
           </TouchableOpacity>
         </View>
 
@@ -60,7 +62,6 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(0, 0, 0, 0.4)",
   },
   sheetContainer: {
-    backgroundColor: "white",
     height: "85%",
     paddingTop: 20,
     borderTopLeftRadius: 25,
@@ -76,10 +77,10 @@ const styles = StyleSheet.create({
   },
   headerText: {
     fontSize: 16,
-    color: "#555",
   },
   headerTitle: {
     fontSize: 18,
     fontWeight: "bold",
   },
 });
+

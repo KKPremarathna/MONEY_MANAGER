@@ -1,4 +1,6 @@
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
+import { useAppContext } from "../src/AppContext";
+import { Ionicons } from "@expo/vector-icons";
 
 const Tab = createBottomTabNavigator();
 
@@ -7,11 +9,30 @@ import Chart from "../screens/Chart";
 import Settings from "../screens/Settings";
 
 export default function BottomBarNavigator() {
+  const { colors } = useAppContext();
+
   return (
     <Tab.Navigator
       initialRouteName="Home"
-      // We hide the header here so we don't get two headers stacked on top of each other!
-      screenOptions={{ headerShown: false }}
+      screenOptions={({ route }) => ({ 
+        headerShown: false,
+        tabBarActiveTintColor: colors.activeTab,
+        tabBarInactiveTintColor: colors.inactiveTab,
+        tabBarStyle: { backgroundColor: colors.background, borderTopColor: colors.border },
+        tabBarIcon: ({ color, size, focused }) => {
+          let iconName;
+
+          if (route.name === "Home") {
+            iconName = focused ? "home" : "home-outline";
+          } else if (route.name === "Expense") {
+            iconName = focused ? "stats-chart" : "stats-chart-outline";
+          } else if (route.name === "Income") {
+            iconName = focused ? "settings" : "settings-outline";
+          }
+
+          return <Ionicons name={iconName} size={size} color={color} />;
+        },
+      })}
     >
       <Tab.Screen
         name="Home"
@@ -31,3 +52,4 @@ export default function BottomBarNavigator() {
     </Tab.Navigator>
   );
 }
+

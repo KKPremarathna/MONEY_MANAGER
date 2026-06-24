@@ -4,13 +4,13 @@ import { useTransactions } from "../src/db/queries";
 import { useAppContext } from "../src/AppContext";
 
 export default function TransactionList({ type }) {
-  const { filter, currency } = useAppContext();
+  const { filter, currency, colors } = useAppContext();
   const transactions = useTransactions(type, filter);
 
   if (transactions.length === 0) {
     return (
-      <View style={styles.emptyContainer}>
-        <Text style={styles.emptyText}>No transactions found.</Text>
+      <View style={[styles.emptyContainer, { backgroundColor: colors.background }]}>
+        <Text style={[styles.emptyText, { color: colors.textSecondary }]}>No transactions found.</Text>
       </View>
     );
   }
@@ -19,13 +19,15 @@ export default function TransactionList({ type }) {
     <FlatList
       data={transactions}
       keyExtractor={(item) => item.id.toString()}
+      style={{ backgroundColor: colors.background }}
       contentContainerStyle={{ paddingBottom: 100 }}
       renderItem={({ item }) => (
         <SmallCard
           category={item.categoryName || 'Unknown'}
           icon={item.categoryIcon || 'list'}
-          color={item.categoryColor || '#000'}
+          color={item.categoryColor || colors.text}
           money={item.amount}
+          type={item.type}
         />
       )}
     />
@@ -41,6 +43,6 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     fontSize: 16,
-    color: '#888'
   }
 });
+

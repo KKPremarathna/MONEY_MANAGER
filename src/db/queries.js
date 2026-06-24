@@ -1,6 +1,6 @@
 import { useLiveQuery } from 'drizzle-orm/expo-sqlite';
 import { db } from './index';
-import { transactions, categories } from './schema';
+import { transactions, categories, users } from './schema';
 import { eq, desc, sum, gte, and } from 'drizzle-orm';
 
 // Hook to get all transactions
@@ -82,4 +82,22 @@ export function useCategories(type) {
   const query = db.select().from(categories).where(eq(categories.type, type));
   const { data } = useLiveQuery(query);
   return data || [];
+}
+
+export function useUserProfile() {
+  const query = db.select().from(users).limit(1);
+  const { data } = useLiveQuery(query);
+  return data && data.length > 0 ? data[0] : null;
+}
+
+export async function createUserProfile(name, email, imageUri = null) {
+  await db.insert(users).values({ name, email, imageUri });
+}
+
+export async function updateUserProfile(id, data) {
+  await db.update(users).set(data).where(eq(users.id, id));
+}
+
+export async function deleteUserProfile() {
+  await db.delete(users);
 }
