@@ -19,7 +19,9 @@ export function useTransactions(type = null) {
     type: transactions.type,
     categoryName: categories.name,
     categoryIcon: categories.icon,
-    categoryColor: categories.color
+    categoryColor: categories.color,
+    categoryBudget: categories.budget,
+    categoryBudgetType: categories.budgetType
   })
   .from(transactions)
   .leftJoin(categories, eq(transactions.categoryId, categories.id))
@@ -96,6 +98,51 @@ export async function insertCategory(data) {
 
 export async function deleteCategory(id) {
   await db.delete(categories).where(eq(categories.id, id));
+}
+
+export async function updateCategoryBudget(id, budget, budgetType) {
+  await db.update(categories)
+    .set({ budget, budgetType })
+    .where(eq(categories.id, id))
+    .execute();
+}
+
+export async function getCategorySpentForMonth(categoryId, year, month) {
+  const startOfMonth = new Date(year, month, 1);
+  const endOfMonth = new Date(year, month + 1, 0, 23, 59, 59, 999);
+  
+  const result = await db.select({
+    total: sum(transactions.amount)
+  })
+  .from(transactions)
+  .where(and(
+    eq(transactions.categoryId, categoryId),
+    eq(transactions.type, 'expense'),
+    gte(transactions.date, startOfMonth),
+    lte(transactions.date, endOfMonth)
+  ))
+  .execute();
+  
+  return result[0]?.total || 0;
+}
+
+export async function getCategorySpentForDay(categoryId, year, month, day) {
+  const startOfDay = new Date(year, month, day, 0, 0, 0, 0);
+  const endOfDay = new Date(year, month, day, 23, 59, 59, 999);
+  
+  const result = await db.select({
+    total: sum(transactions.amount)
+  })
+  .from(transactions)
+  .where(and(
+    eq(transactions.categoryId, categoryId),
+    eq(transactions.type, 'expense'),
+    gte(transactions.date, startOfDay),
+    lte(transactions.date, endOfDay)
+  ))
+  .execute();
+  
+  return result[0]?.total || 0;
 }
 
 export async function resetDatabase() {

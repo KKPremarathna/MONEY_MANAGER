@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, StyleSheet, TouchableOpacity, ScrollView, Modal, Alert, FlatList } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useCategories, insertTransaction, insertCategory, deleteCategory } from '../src/db/queries';
+import { useCategories, insertTransaction, insertCategory, deleteCategory, getCategorySpentForMonth, getCategorySpentForDay } from '../src/db/queries';
 import { useNavigation } from '@react-navigation/native';
 import { useAppContext } from '../src/AppContext';
 import DateTimePicker from '@react-native-community/datetimepicker';
@@ -23,7 +23,7 @@ const PRESET_COLORS = [
 export default function TransactionForm({ type }) {
   const navigation = useNavigation();
   const categories = useCategories(type);
-  const { colors } = useAppContext();
+  const { colors, getCurrencySymbol } = useAppContext();
   
   const [amount, setAmount] = useState('');
   const [note, setNote] = useState('');
@@ -44,15 +44,62 @@ export default function TransactionForm({ type }) {
       return;
     }
 
-    await insertTransaction({
-      amount: parseFloat(amount),
-      note,
-      categoryId: selectedCategory,
-      type,
-      date
-    });
+    const addedAmount = parseFloat(amount);
 
-    navigation.getParent()?.goBack();
+    const performSave = async () => {
+      await insertTransaction({
+        amount: addedAmount,
+        note,
+        categoryId: selectedCategory,
+        type,
+        date
+      });
+
+      navigation.getParent()?.goBack();
+    };
+
+    if (type === 'expense') {
+      const categoryObj = categories.find(c => c.id === selectedCategory);
+      if (categoryObj && categoryObj.budget !== null && categoryObj.budget > 0) {
+        try {
+          const year = date.getFullYear();
+          const month = date.getMonth();
+          const isDaily = categoryObj.budgetType === "daily";
+          
+          const currentSpent = isDaily 
+            ? await getCategorySpentForDay(selectedCategory, year, month, date.getDate())
+            : await getCategorySpentForMonth(selectedCategory, year, month);
+
+          const totalSpent = currentSpent + addedAmount;
+          const budgetLimit = categoryObj.budget;
+          const symbol = getCurrencySymbol();
+          const periodName = isDaily ? "daily" : "monthly";
+
+          if (totalSpent >= budgetLimit && currentSpent < budgetLimit) {
+            const exceededAmt = totalSpent - budgetLimit;
+            Alert.alert(
+              "Budget Exceeded",
+              `${categoryObj.name} ${periodName} budget exceeded: You have spent ${symbol}${totalSpent.toLocaleString(undefined, { maximumFractionDigits: 0 })} / ${symbol}${budgetLimit.toLocaleString(undefined, { maximumFractionDigits: 0 })} (Exceeded by ${symbol}${exceededAmt.toLocaleString(undefined, { maximumFractionDigits: 0 })}).`,
+              [{ text: "OK", onPress: performSave }]
+            );
+            return;
+          } else if (totalSpent >= budgetLimit * 0.8 && currentSpent < budgetLimit * 0.8) {
+            const percentage = Math.round((totalSpent / budgetLimit) * 100);
+            const remainingAmt = budgetLimit - totalSpent;
+            Alert.alert(
+              "Budget Warning",
+              `${categoryObj.name} ${periodName} budget warning: You have spent ${percentage}% of your ${symbol}${budgetLimit.toLocaleString(undefined, { maximumFractionDigits: 0 })} budget (${symbol}${remainingAmt.toLocaleString(undefined, { maximumFractionDigits: 0 })} left).`,
+              [{ text: "OK", onPress: performSave }]
+            );
+            return;
+          }
+        } catch (error) {
+          console.error("Failed to check budget constraints:", error);
+        }
+      }
+    }
+
+    await performSave();
   };
 
   const handleCreateCategory = async () => {

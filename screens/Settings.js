@@ -49,6 +49,12 @@ export default function Settings() {
       onPress: () => navigation.navigate('Reminders')
     },
     {
+      id: 'budgets',
+      label: 'Manage Budgets',
+      icon: 'pie-chart-outline',
+      onPress: () => navigation.navigate('Budgets')
+    },
+    {
       id: 'reset',
       label: 'Reset App Data',
       icon: 'trash-outline',

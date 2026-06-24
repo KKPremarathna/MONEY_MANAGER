@@ -56,6 +56,8 @@ function AppContent() {
             options={{ headerShown: false }}
           />
 
+
+
           <Stack.Screen
             name="AddTransaction"
             component={AddExpensesIncomes}

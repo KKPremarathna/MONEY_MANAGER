@@ -6,6 +6,8 @@ export const categories = sqliteTable('categories', {
   type: text('type', { enum: ['income', 'expense'] }).notNull(),
   color: text('color'),
   icon: text('icon'),
+  budget: real('budget'),
+  budgetType: text('budget_type').default('monthly'),
 });
 
 export const users = sqliteTable('users', {

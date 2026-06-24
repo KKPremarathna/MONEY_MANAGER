@@ -7,6 +7,7 @@ const Tab = createBottomTabNavigator();
 import MainScreen from "../screens/MainScreen";
 import Chart from "../screens/Chart";
 import Settings from "../screens/Settings";
+import BudgetsScreen from "../screens/BudgetsScreen";
 
 export default function BottomBarNavigator() {
   const { colors } = useAppContext();
@@ -26,6 +27,8 @@ export default function BottomBarNavigator() {
             iconName = focused ? "home" : "home-outline";
           } else if (route.name === "Expense") {
             iconName = focused ? "stats-chart" : "stats-chart-outline";
+          } else if (route.name === "Budgets") {
+            iconName = focused ? "pie-chart" : "pie-chart-outline";
           } else if (route.name === "Income") {
             iconName = focused ? "settings" : "settings-outline";
           }
@@ -43,6 +46,11 @@ export default function BottomBarNavigator() {
         name="Expense"
         component={Chart}
         options={{ tabBarLabel: "Chart" }}
+      />
+      <Tab.Screen
+        name="Budgets"
+        component={BudgetsScreen}
+        options={{ tabBarLabel: "Budgets" }}
       />
       <Tab.Screen
         name="Income"
