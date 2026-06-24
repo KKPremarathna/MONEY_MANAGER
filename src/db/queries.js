@@ -4,29 +4,11 @@ import { transactions, categories, users, defaultCategories } from './schema';
 import { eq, desc, sum, gte, lte, and } from 'drizzle-orm';
 
 // Hook to get all transactions
-export function useTransactions(type = null, dateFilter = 'all', referenceDate = new Date()) {
+export function useTransactions(type = null) {
   let conditions = [];
 
   if (type) {
     conditions.push(eq(transactions.type, type));
-  }
-
-  const ref = new Date(referenceDate);
-  if (dateFilter === 'daily') {
-    const startOfDay = new Date(ref.getFullYear(), ref.getMonth(), ref.getDate()).getTime();
-    const endOfDay = startOfDay + 24 * 60 * 60 * 1000 - 1;
-    conditions.push(gte(transactions.date, new Date(startOfDay)));
-    conditions.push(lte(transactions.date, new Date(endOfDay)));
-  } else if (dateFilter === 'monthly') {
-    const startOfMonth = new Date(ref.getFullYear(), ref.getMonth(), 1).getTime();
-    const endOfMonth = new Date(ref.getFullYear(), ref.getMonth() + 1, 0, 23, 59, 59, 999).getTime();
-    conditions.push(gte(transactions.date, new Date(startOfMonth)));
-    conditions.push(lte(transactions.date, new Date(endOfMonth)));
-  } else if (dateFilter === 'yearly') {
-    const startOfYear = new Date(ref.getFullYear(), 0, 1).getTime();
-    const endOfYear = new Date(ref.getFullYear(), 11, 31, 23, 59, 59, 999).getTime();
-    conditions.push(gte(transactions.date, new Date(startOfYear)));
-    conditions.push(lte(transactions.date, new Date(endOfYear)));
   }
 
   let query = db.select({

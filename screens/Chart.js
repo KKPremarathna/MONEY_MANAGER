@@ -15,7 +15,27 @@ import { Ionicons } from "@expo/vector-icons";
 
 export default function Chart() {
   const { filter, setFilter, referenceDate, setReferenceDate, colors, getCurrencySymbol } = useAppContext();
-  const transactions = useTransactions(null, filter, referenceDate);
+  const allTransactions = useTransactions(null);
+
+  const transactions = allTransactions.filter(t => {
+    if (filter === 'all') return true;
+    if (!t.date) return false;
+    
+    const tDate = new Date(t.date);
+    const rDate = new Date(referenceDate);
+    
+    if (filter === 'daily') {
+      return tDate.getFullYear() === rDate.getFullYear() &&
+             tDate.getMonth() === rDate.getMonth() &&
+             tDate.getDate() === rDate.getDate();
+    } else if (filter === 'monthly') {
+      return tDate.getFullYear() === rDate.getFullYear() &&
+             tDate.getMonth() === rDate.getMonth();
+    } else if (filter === 'yearly') {
+      return tDate.getFullYear() === rDate.getFullYear();
+    }
+    return true;
+  });
 
   const expenses = transactions.filter(t => t.type === 'expense');
   const totalExpenses = expenses.reduce((sum, t) => sum + t.amount, 0);

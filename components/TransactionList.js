@@ -5,7 +5,27 @@ import { useAppContext } from "../src/AppContext";
 
 export default function TransactionList({ type }) {
   const { filter, referenceDate, currency, colors } = useAppContext();
-  const transactions = useTransactions(type, filter, referenceDate);
+  const allTransactions = useTransactions(type);
+
+  const transactions = allTransactions.filter(t => {
+    if (filter === 'all') return true;
+    if (!t.date) return false;
+    
+    const tDate = new Date(t.date);
+    const rDate = new Date(referenceDate);
+    
+    if (filter === 'daily') {
+      return tDate.getFullYear() === rDate.getFullYear() &&
+             tDate.getMonth() === rDate.getMonth() &&
+             tDate.getDate() === rDate.getDate();
+    } else if (filter === 'monthly') {
+      return tDate.getFullYear() === rDate.getFullYear() &&
+             tDate.getMonth() === rDate.getMonth();
+    } else if (filter === 'yearly') {
+      return tDate.getFullYear() === rDate.getFullYear();
+    }
+    return true;
+  });
 
   const getFormattedRange = () => {
     const d = new Date(referenceDate);
