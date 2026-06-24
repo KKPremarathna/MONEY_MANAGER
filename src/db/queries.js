@@ -21,7 +21,8 @@ export function useTransactions(type = null) {
     categoryIcon: categories.icon,
     categoryColor: categories.color,
     categoryBudget: categories.budget,
-    categoryBudgetType: categories.budgetType
+    categoryBudgetType: categories.budgetType,
+    categoryId: transactions.categoryId
   })
   .from(transactions)
   .leftJoin(categories, eq(transactions.categoryId, categories.id))
@@ -66,6 +67,17 @@ export async function insertTransaction(data) {
     ...data,
     date: data.date || new Date()
   });
+}
+
+export async function deleteTransaction(id) {
+  await db.delete(transactions).where(eq(transactions.id, id)).execute();
+}
+
+export async function updateTransaction(id, data) {
+  await db.update(transactions)
+    .set(data)
+    .where(eq(transactions.id, id))
+    .execute();
 }
 
 export function useCategories(type) {

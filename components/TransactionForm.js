@@ -187,8 +187,7 @@ export default function TransactionForm({ type }) {
                 >
                   <View style={[
                     styles.iconContainer, 
-                    { backgroundColor: cat.color },
-                    isSelected && { borderWidth: 3, borderColor: colors.text }
+                    { backgroundColor: cat.color }
                   ]}>
                     <Ionicons name={cat.icon || 'list'} size={20} color="white" />
                   </View>
@@ -410,6 +409,16 @@ const styles = StyleSheet.create({
   selectedCategory: {
     opacity: 1,
   },
+  iconOuterRing: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    borderWidth: 2,
+    borderColor: "transparent",
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 2,
+  },
   iconContainer: {
     width: 46,
     height: 46,
@@ -417,11 +426,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
   },
   categoryName: {
     fontSize: 10,
