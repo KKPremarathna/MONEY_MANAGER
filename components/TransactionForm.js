@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useCategories, insertTransaction, insertCategory, deleteCategory } from '../src/db/queries';
 import { useNavigation } from '@react-navigation/native';
 import { useAppContext } from '../src/AppContext';
+import DateTimePicker from '@react-native-community/datetimepicker';
 
 const PRESET_ICONS = [
   'cart-outline', 'bus-outline', 'fast-food-outline', 'shirt-outline', 
@@ -27,6 +28,8 @@ export default function TransactionForm({ type }) {
   const [amount, setAmount] = useState('');
   const [note, setNote] = useState('');
   const [selectedCategory, setSelectedCategory] = useState(null);
+  const [date, setDate] = useState(new Date());
+  const [showDatePicker, setShowDatePicker] = useState(false);
 
   // Category management states
   const [isManaging, setIsManaging] = useState(false);
@@ -45,7 +48,8 @@ export default function TransactionForm({ type }) {
       amount: parseFloat(amount),
       note,
       categoryId: selectedCategory,
-      type
+      type,
+      date
     });
 
     navigation.getParent()?.goBack();
@@ -139,7 +143,7 @@ export default function TransactionForm({ type }) {
                     { backgroundColor: cat.color },
                     isSelected && { borderWidth: 3, borderColor: colors.text }
                   ]}>
-                    <Ionicons name={cat.icon || 'list'} size={24} color="white" />
+                    <Ionicons name={cat.icon || 'list'} size={20} color="white" />
                   </View>
                   <Text style={[styles.categoryName, { color: colors.text }, isSelected && { fontWeight: '700' }]} numberOfLines={1}>
                     {cat.name}
@@ -168,12 +172,41 @@ export default function TransactionForm({ type }) {
                 styles.iconContainer, 
                 { backgroundColor: colors.surface, borderStyle: 'dashed', borderWidth: 2, borderColor: colors.border }
               ]}>
-                <Ionicons name="add" size={24} color={colors.textSecondary} />
+                <Ionicons name="add" size={20} color={colors.textSecondary} />
               </View>
               <Text style={[styles.categoryName, { color: colors.textSecondary }]}>Add Custom</Text>
             </TouchableOpacity>
           )}
         </View>
+      </View>
+
+      <View style={styles.inputGroup}>
+        <Text style={[styles.label, { color: colors.textSecondary }]}>Date</Text>
+        <TouchableOpacity 
+          style={[styles.inputWrapper, styles.dateRow, { borderColor: colors.border, backgroundColor: colors.card }]}
+          onPress={() => setShowDatePicker(true)}
+          activeOpacity={0.8}
+        >
+          <Ionicons name="calendar-outline" size={20} color={colors.primary} style={{ marginRight: 8 }} />
+          <Text style={[styles.dateTextLabel, { color: colors.text }]}>
+            {date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+          </Text>
+        </TouchableOpacity>
+        
+        {showDatePicker && (
+          <DateTimePicker
+            value={date}
+            mode="date"
+            display="default"
+            maximumDate={new Date()}
+            onChange={(event, selectedDate) => {
+              setShowDatePicker(false);
+              if (selectedDate) {
+                setDate(selectedDate);
+              }
+            }}
+          />
+        )}
       </View>
 
       <View style={styles.inputGroup}>
@@ -271,33 +304,34 @@ export default function TransactionForm({ type }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
   },
   inputGroup: {
-    marginBottom: 24,
+    marginBottom: 12,
   },
   labelRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: 6,
   },
   manageText: {
     fontSize: 14,
     fontWeight: '600',
   },
   label: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '600',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
-    marginBottom: 8,
+    marginBottom: 6,
   },
   inputWrapper: {
     borderWidth: 1,
-    borderRadius: 16,
-    paddingHorizontal: 16,
-    paddingVertical: 4,
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 2,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.02,
@@ -305,37 +339,37 @@ const styles = StyleSheet.create({
     elevation: 1,
   },
   input: {
-    height: 48,
-    fontSize: 16,
+    height: 40,
+    fontSize: 15,
     fontWeight: '500',
   },
   categoryGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 12,
+    gap: 8,
     justifyContent: 'flex-start',
-    paddingVertical: 5,
+    paddingVertical: 4,
   },
   categoryItemWrapper: {
     position: 'relative',
-    width: '22%',
+    width: '18%',
   },
   categoryItem: {
     alignItems: 'center',
     width: '100%',
-    marginBottom: 10,
+    marginBottom: 4,
     opacity: 0.5,
   },
   selectedCategory: {
     opacity: 1,
   },
   iconContainer: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+    width: 46,
+    height: 46,
+    borderRadius: 23,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 6,
+    marginBottom: 4,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
@@ -343,26 +377,26 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   categoryName: {
-    fontSize: 11,
+    fontSize: 10,
     textAlign: 'center',
   },
   deleteBadge: {
     position: 'absolute',
     top: -2,
-    right: 2,
+    right: -2,
     backgroundColor: '#EF4444',
-    width: 20,
-    height: 20,
-    borderRadius: 10,
+    width: 18,
+    height: 18,
+    borderRadius: 9,
     justifyContent: 'center',
     alignItems: 'center',
     elevation: 3,
   },
   saveButton: {
-    padding: 16,
-    borderRadius: 16,
+    padding: 12,
+    borderRadius: 12,
     alignItems: 'center',
-    marginTop: 15,
+    marginTop: 10,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.15,
@@ -423,6 +457,15 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  dateRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    height: 40,
+  },
+  dateTextLabel: {
+    fontSize: 16,
+    fontWeight: '500',
   }
 });
 

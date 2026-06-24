@@ -62,7 +62,7 @@ export function useBalance() {
 export async function insertTransaction(data) {
   await db.insert(transactions).values({
     ...data,
-    date: new Date()
+    date: data.date || new Date()
   });
 }
 
