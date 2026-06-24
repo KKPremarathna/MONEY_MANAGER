@@ -1,15 +1,48 @@
-import { Text, View, Image, StyleSheet, TouchableOpacity } from "react-native";
+import { Text, View, Image, StyleSheet, TouchableOpacity, Switch } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAppContext } from "../src/AppContext";
-import { useUserProfile, resetDatabase } from '../src/db/queries';
+import { useUserProfile, resetDatabase, updateUserProfile } from '../src/db/queries';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
+import * as LocalAuthentication from 'expo-local-authentication';
 
 export default function Settings() {
   const insets = useSafeAreaInsets();
   const { currency, colors, forceReset, showAlert } = useAppContext();
   const profile = useUserProfile();
   const navigation = useNavigation();
+
+  const handleToggleBiometrics = async (value) => {
+    if (!profile) {
+      showAlert("Profile Required", "Please configure profile details first before enabling security locks.");
+      return;
+    }
+
+    try {
+      if (value) {
+        const hasHardware = await LocalAuthentication.hasHardwareAsync();
+        const isEnrolled = await LocalAuthentication.isEnrolledAsync();
+
+        if (!hasHardware || !isEnrolled) {
+          showAlert("Not Supported", "Biometric locks (FaceID/Fingerprint) are not configured or supported on this device.");
+          return;
+        }
+
+        const result = await LocalAuthentication.authenticateAsync({
+          promptMessage: "Confirm identity to enable startup lock",
+          fallbackLabel: "Use passcode",
+        });
+
+        if (result.success) {
+          await updateUserProfile(profile.id, { biometricsEnabled: true });
+        }
+      } else {
+        await updateUserProfile(profile.id, { biometricsEnabled: false });
+      }
+    } catch (err) {
+      showAlert("Error", "Failed to update security setting: " + err.message);
+    }
+  };
 
   const settingsOptions = [
     {
@@ -41,6 +74,14 @@ export default function Settings() {
       label: 'Themes',
       icon: 'color-palette-outline',
       onPress: () => navigation.navigate('ThemeSelection')
+    },
+    {
+      id: 'biometrics',
+      label: 'Startup Biometric Lock',
+      icon: 'finger-print-outline',
+      isSwitch: true,
+      switchValue: profile?.biometricsEnabled || false,
+      onToggle: handleToggleBiometrics
     },
     {
       id: 'reminders',
@@ -115,15 +156,32 @@ export default function Settings() {
       <View style={[styles.groupContainer, { backgroundColor: colors.card, borderColor: colors.border }]}>
         {settingsOptions.map((option, idx) => (
           <View key={option.id}>
-            <TouchableOpacity style={styles.optionRow} onPress={option.onPress}>
-              <View style={styles.optionLeft}>
-                <View style={[styles.iconWrapper, { backgroundColor: colors.background }]}>
-                  <Ionicons name={option.icon} size={20} color={colors.primary} />
+            {option.isSwitch ? (
+              <View style={styles.optionRow}>
+                <View style={styles.optionLeft}>
+                  <View style={[styles.iconWrapper, { backgroundColor: colors.background }]}>
+                    <Ionicons name={option.icon} size={20} color={colors.primary} />
+                  </View>
+                  <Text style={[styles.optionLabel, { color: colors.text }]}>{option.label}</Text>
                 </View>
-                <Text style={[styles.optionLabel, { color: colors.text }]}>{option.label}</Text>
+                <Switch
+                  value={option.switchValue}
+                  onValueChange={option.onToggle}
+                  trackColor={{ false: colors.border, true: colors.primary + "80" }}
+                  thumbColor={option.switchValue ? colors.primary : colors.textSecondary}
+                />
               </View>
-              <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
-            </TouchableOpacity>
+            ) : (
+              <TouchableOpacity style={styles.optionRow} onPress={option.onPress}>
+                <View style={styles.optionLeft}>
+                  <View style={[styles.iconWrapper, { backgroundColor: colors.background }]}>
+                    <Ionicons name={option.icon} size={20} color={colors.primary} />
+                  </View>
+                  <Text style={[styles.optionLabel, { color: colors.text }]}>{option.label}</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
+              </TouchableOpacity>
+            )}
             {idx < settingsOptions.length - 1 && (
               <View style={[styles.separator, { backgroundColor: colors.border }]} />
             )}

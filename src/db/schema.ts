@@ -15,6 +15,7 @@ export const users = sqliteTable('users', {
   name: text('name').notNull(),
   email: text('email').notNull(),
   imageUri: text('image_uri'),
+  biometricsEnabled: integer('biometrics_enabled', { mode: 'boolean' }).default(false),
 });
 
 export const transactions = sqliteTable('transactions', {
