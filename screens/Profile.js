@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TextInput, StyleSheet, TouchableOpacity, Image, Alert } from 'react-native';
+import { View, Text, TextInput, StyleSheet, TouchableOpacity, Image } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { useUserProfile, updateUserProfile, createUserProfile, deleteUserProfile } from '../src/db/queries';
 import { useNavigation } from '@react-navigation/native';
@@ -7,7 +7,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAppContext } from '../src/AppContext';
 
 export default function Profile() {
-  const { colors } = useAppContext();
+  const { colors, showAlert } = useAppContext();
   const profile = useUserProfile();
   const navigation = useNavigation();
 
@@ -36,7 +36,7 @@ export default function Profile() {
 
   const handleSave = async () => {
     if (!name.trim()) {
-      Alert.alert('Error', 'Name cannot be empty.');
+      showAlert('Error', 'Name cannot be empty.');
       return;
     }
     
@@ -92,7 +92,7 @@ export default function Profile() {
         <TouchableOpacity 
           style={styles.logoutButton} 
           onPress={async () => {
-            Alert.alert("Log Out", "Are you sure you want to log out? Local profile data will be cleared.", [
+            showAlert("Log Out", "Are you sure you want to log out? Local profile data will be cleared.", [
               { text: "Cancel", style: "cancel" },
               { text: "Log Out", style: "destructive", onPress: async () => {
                   await deleteUserProfile();

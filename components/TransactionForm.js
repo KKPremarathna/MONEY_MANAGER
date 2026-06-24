@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, StyleSheet, TouchableOpacity, ScrollView, Modal, Alert, FlatList } from 'react-native';
+import { View, Text, TextInput, StyleSheet, TouchableOpacity, ScrollView, Modal, FlatList } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useCategories, insertTransaction, insertCategory, deleteCategory, getCategorySpentForMonth, getCategorySpentForDay } from '../src/db/queries';
 import { useNavigation } from '@react-navigation/native';
@@ -23,7 +23,7 @@ const PRESET_COLORS = [
 export default function TransactionForm({ type }) {
   const navigation = useNavigation();
   const categories = useCategories(type);
-  const { colors, getCurrencySymbol } = useAppContext();
+  const { colors, getCurrencySymbol, showAlert } = useAppContext();
   
   const [amount, setAmount] = useState('');
   const [note, setNote] = useState('');
@@ -40,7 +40,7 @@ export default function TransactionForm({ type }) {
 
   const handleSave = async () => {
     if (!amount || isNaN(amount) || !selectedCategory) {
-      Alert.alert("Error", "Please enter a valid amount and select a category.");
+      showAlert("Error", "Please enter a valid amount and select a category.");
       return;
     }
 
@@ -77,7 +77,7 @@ export default function TransactionForm({ type }) {
 
           if (totalSpent >= budgetLimit && currentSpent < budgetLimit) {
             const exceededAmt = totalSpent - budgetLimit;
-            Alert.alert(
+            showAlert(
               "Budget Exceeded",
               `${categoryObj.name} ${periodName} budget exceeded: You have spent ${symbol}${totalSpent.toLocaleString(undefined, { maximumFractionDigits: 0 })} / ${symbol}${budgetLimit.toLocaleString(undefined, { maximumFractionDigits: 0 })} (Exceeded by ${symbol}${exceededAmt.toLocaleString(undefined, { maximumFractionDigits: 0 })}).`,
               [{ text: "OK", onPress: performSave }]
@@ -86,7 +86,7 @@ export default function TransactionForm({ type }) {
           } else if (totalSpent >= budgetLimit * 0.8 && currentSpent < budgetLimit * 0.8) {
             const percentage = Math.round((totalSpent / budgetLimit) * 100);
             const remainingAmt = budgetLimit - totalSpent;
-            Alert.alert(
+            showAlert(
               "Budget Warning",
               `${categoryObj.name} ${periodName} budget warning: You have spent ${percentage}% of your ${symbol}${budgetLimit.toLocaleString(undefined, { maximumFractionDigits: 0 })} budget (${symbol}${remainingAmt.toLocaleString(undefined, { maximumFractionDigits: 0 })} left).`,
               [{ text: "OK", onPress: performSave }]
@@ -104,7 +104,7 @@ export default function TransactionForm({ type }) {
 
   const handleCreateCategory = async () => {
     if (!customName.trim()) {
-      Alert.alert("Error", "Category name cannot be empty.");
+      showAlert("Error", "Category name cannot be empty.");
       return;
     }
 
@@ -120,7 +120,7 @@ export default function TransactionForm({ type }) {
   };
 
   const handleDeleteCategory = (catId, catName) => {
-    Alert.alert(
+    showAlert(
       "Delete Category",
       `Are you sure you want to delete the category "${catName}"?`,
       [

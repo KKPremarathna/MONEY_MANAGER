@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import * as Notifications from 'expo-notifications';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
@@ -14,7 +14,7 @@ Notifications.setNotificationHandler({
 });
 
 export default function Reminders() {
-  const { theme, colors } = useAppContext();
+  const { theme, colors, showAlert } = useAppContext();
   const navigation = useNavigation();
   const [isReminderSet, setIsReminderSet] = useState(false);
 
@@ -27,7 +27,7 @@ export default function Reminders() {
     if (status !== 'granted') {
       const { status: newStatus } = await Notifications.requestPermissionsAsync();
       if (newStatus !== 'granted') {
-        Alert.alert('Permission required', 'Please enable notifications in your phone settings.');
+        showAlert('Permission required', 'Please enable notifications in your phone settings.');
       }
     }
   };
@@ -49,13 +49,13 @@ export default function Reminders() {
     });
 
     setIsReminderSet(true);
-    Alert.alert("Reminder Set!", "You will be reminded daily at 8:00 PM.");
+    showAlert("Reminder Set!", "You will be reminded daily at 8:00 PM.");
   };
 
   const cancelReminder = async () => {
     await Notifications.cancelAllScheduledNotificationsAsync();
     setIsReminderSet(false);
-    Alert.alert("Reminder Cancelled", "Your daily reminder has been turned off.");
+    showAlert("Reminder Cancelled", "Your daily reminder has been turned off.");
   };
 
   return (

@@ -7,7 +7,6 @@ import {
   TouchableOpacity, 
   Modal, 
   TextInput, 
-  Alert,
   ScrollView
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -17,7 +16,7 @@ import { useCategories, updateCategoryBudget, useTransactions } from "../src/db/
 
 export default function BudgetsScreen() {
   const insets = useSafeAreaInsets();
-  const { colors, getCurrencySymbol } = useAppContext();
+  const { colors, getCurrencySymbol, showAlert } = useAppContext();
   const currencySymbol = getCurrencySymbol();
 
   const expenseCategories = useCategories("expense");
@@ -70,7 +69,7 @@ export default function BudgetsScreen() {
     
     const parsed = parseFloat(budgetValue);
     if (budgetValue.trim() !== "" && (isNaN(parsed) || parsed < 0)) {
-      Alert.alert("Invalid Amount", "Please enter a valid positive number.");
+      showAlert("Invalid Amount", "Please enter a valid positive number.");
       return;
     }
 
@@ -80,7 +79,7 @@ export default function BudgetsScreen() {
       await updateCategoryBudget(editingCategory.id, valueToSave, budgetType);
       setEditingCategory(null);
     } catch (error) {
-      Alert.alert("Error", "Failed to update budget: " + error.message);
+      showAlert("Error", "Failed to update budget: " + error.message);
     }
   };
 
@@ -90,7 +89,7 @@ export default function BudgetsScreen() {
       await updateCategoryBudget(editingCategory.id, null, "monthly");
       setEditingCategory(null);
     } catch (error) {
-      Alert.alert("Error", "Failed to clear budget: " + error.message);
+      showAlert("Error", "Failed to clear budget: " + error.message);
     }
   };
 

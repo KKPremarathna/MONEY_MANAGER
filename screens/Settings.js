@@ -1,4 +1,4 @@
-import { Text, View, Image, StyleSheet, Alert, TouchableOpacity } from "react-native";
+import { Text, View, Image, StyleSheet, TouchableOpacity } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAppContext } from "../src/AppContext";
 import { useUserProfile, resetDatabase } from '../src/db/queries';
@@ -7,7 +7,7 @@ import { Ionicons } from '@expo/vector-icons';
 
 export default function Settings() {
   const insets = useSafeAreaInsets();
-  const { currency, colors, forceReset } = useAppContext();
+  const { currency, colors, forceReset, showAlert } = useAppContext();
   const profile = useUserProfile();
   const navigation = useNavigation();
 
@@ -24,7 +24,7 @@ export default function Settings() {
       icon: profile?.email && profile.email !== 'local@offline.com' ? 'cloud-done-outline' : 'cloud-upload-outline',
       onPress: () => {
         if (profile?.email && profile.email !== 'local@offline.com') {
-          Alert.alert('Cloud Sync', 'Your data is backed up to the cloud.');
+          showAlert('Cloud Sync', 'Your data is backed up to the cloud.');
         } else {
           navigation.navigate('Login');
         }
@@ -59,7 +59,7 @@ export default function Settings() {
       label: 'Reset App Data',
       icon: 'trash-outline',
       onPress: () => {
-        Alert.alert(
+        showAlert(
           'Reset Data',
           'Are you sure you want to delete all transactions, custom categories, and user profile data? This will restore the database to a fresh state and cannot be undone.',
           [
@@ -70,11 +70,11 @@ export default function Settings() {
               onPress: async () => {
                 try {
                   await resetDatabase();
-                  Alert.alert('Reset Complete', 'All data has been wiped. You can fresh start now!', [
+                  showAlert('Reset Complete', 'All data has been wiped. You can fresh start now!', [
                     { text: 'OK', onPress: () => forceReset() }
                   ]);
                 } catch (err) {
-                  Alert.alert('Error', 'Failed to reset database: ' + err.message);
+                  showAlert('Error', 'Failed to reset database: ' + err.message);
                 }
               }
             }

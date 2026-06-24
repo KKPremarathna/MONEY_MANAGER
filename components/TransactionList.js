@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { FlatList, View, Text, StyleSheet, TouchableOpacity, Modal, TextInput, Alert, ScrollView, Pressable, Animated } from "react-native";
+import { FlatList, View, Text, StyleSheet, TouchableOpacity, Modal, TextInput, ScrollView, Pressable, Animated } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import SmallCard from "./ui/SmallCard";
@@ -53,7 +53,7 @@ function AnimatedCardItem({ item, colors, handleOpenDetails }) {
 }
 
 export default function TransactionList({ type }) {
-  const { filter, referenceDate, colors, selectedCategory, getCurrencySymbol } = useAppContext();
+  const { filter, referenceDate, colors, selectedCategory, getCurrencySymbol, showAlert } = useAppContext();
   const allTransactions = useTransactions(type);
 
   const expenseCategories = useCategories("expense");
@@ -102,7 +102,7 @@ export default function TransactionList({ type }) {
   const handleDelete = () => {
     if (!selectedTransaction) return;
 
-    Alert.alert(
+    showAlert(
       "Delete Transaction",
       "Are you sure you want to permanently delete this transaction?",
       [
@@ -115,7 +115,7 @@ export default function TransactionList({ type }) {
               await deleteTransaction(selectedTransaction.id);
               setSelectedTransaction(null);
             } catch (err) {
-              Alert.alert("Error", "Failed to delete: " + err.message);
+              showAlert("Error", "Failed to delete: " + err.message);
             }
           }
         }
@@ -128,12 +128,12 @@ export default function TransactionList({ type }) {
 
     const parsedAmount = parseFloat(editAmount);
     if (!editAmount || isNaN(parsedAmount) || parsedAmount <= 0) {
-      Alert.alert("Invalid Amount", "Please enter a valid amount.");
+      showAlert("Invalid Amount", "Please enter a valid amount.");
       return;
     }
 
     if (!editCategoryId) {
-      Alert.alert("Error", "Please select a category.");
+      showAlert("Error", "Please select a category.");
       return;
     }
 
@@ -147,7 +147,7 @@ export default function TransactionList({ type }) {
         });
         setSelectedTransaction(null);
       } catch (err) {
-        Alert.alert("Error", "Failed to update transaction: " + err.message);
+        showAlert("Error", "Failed to update transaction: " + err.message);
       }
     };
 
@@ -182,7 +182,7 @@ export default function TransactionList({ type }) {
 
           if (adjustedSpent >= budgetLimit && (currentSpent - previousAmountInPeriod) < budgetLimit) {
             const exceededAmt = adjustedSpent - budgetLimit;
-            Alert.alert(
+            showAlert(
               "Budget Exceeded",
               `${categoryObj.name} ${periodName} budget exceeded: You have spent ${symbol}${adjustedSpent.toLocaleString(undefined, { maximumFractionDigits: 0 })} / ${symbol}${budgetLimit.toLocaleString(undefined, { maximumFractionDigits: 0 })} (Exceeded by ${symbol}${exceededAmt.toLocaleString(undefined, { maximumFractionDigits: 0 })}).`,
               [{ text: "OK", onPress: performUpdate }]
@@ -191,7 +191,7 @@ export default function TransactionList({ type }) {
           } else if (adjustedSpent >= budgetLimit * 0.8 && (currentSpent - previousAmountInPeriod) < budgetLimit * 0.8) {
             const percentage = Math.round((adjustedSpent / budgetLimit) * 100);
             const remainingAmt = budgetLimit - adjustedSpent;
-            Alert.alert(
+            showAlert(
               "Budget Warning",
               `${categoryObj.name} ${periodName} budget warning: You have spent ${percentage}% of your ${symbol}${budgetLimit.toLocaleString(undefined, { maximumFractionDigits: 0 })} budget (${symbol}${remainingAmt.toLocaleString(undefined, { maximumFractionDigits: 0 })} left).`,
               [{ text: "OK", onPress: performUpdate }]
