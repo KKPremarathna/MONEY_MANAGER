@@ -1,4 +1,4 @@
-import React, { createContext, useState, useContext } from 'react';
+import React, { createContext, useState, useContext, useEffect } from 'react';
 import { themes } from './theme';
 
 const AppContext = createContext();
@@ -20,6 +20,12 @@ export function AppProvider({ children, forceReset }) {
   const [currency, setCurrency] = useState('LKR'); // 'LKR' or 'USD'
   const [theme, setTheme] = useState('light'); // 'light' or 'dark'
   const [activeTab, setActiveTab] = useState('All');
+  const [selectedCategory, setSelectedCategory] = useState(null);
+
+  // Auto-reset category selection on filter or date change
+  useEffect(() => {
+    setSelectedCategory(null);
+  }, [filter, referenceDate]);
 
   const changeFilter = (newFilter) => {
     setFilter(newFilter);
@@ -43,7 +49,9 @@ export function AppProvider({ children, forceReset }) {
       colors,
       forceReset,
       activeTab,
-      setActiveTab
+      setActiveTab,
+      selectedCategory,
+      setSelectedCategory
     }}>
       {children}
     </AppContext.Provider>

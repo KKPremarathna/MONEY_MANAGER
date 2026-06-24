@@ -4,10 +4,14 @@ import { useTransactions } from "../src/db/queries";
 import { useAppContext } from "../src/AppContext";
 
 export default function TransactionList({ type }) {
-  const { filter, referenceDate, currency, colors } = useAppContext();
+  const { filter, referenceDate, currency, colors, selectedCategory } = useAppContext();
   const allTransactions = useTransactions(type);
 
   const transactions = allTransactions.filter(t => {
+    if (selectedCategory && t.categoryName !== selectedCategory) {
+      return false;
+    }
+
     if (filter === 'all') return true;
     if (!t.date) return false;
     

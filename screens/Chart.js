@@ -1,5 +1,5 @@
-import { StyleSheet, Text, View, TouchableOpacity, ScrollView } from "react-native";
-import Svg, { Circle } from "react-native-svg";
+import { StyleSheet, Text, View, TouchableOpacity, ScrollView, Pressable } from "react-native";
+import Svg, { Circle, G } from "react-native-svg";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import TopBarNavigator from "../Navigators/TopBarNavigator";
 
@@ -16,7 +16,7 @@ import { Ionicons } from "@expo/vector-icons";
 
 export default function Chart() {
   const insets = useSafeAreaInsets();
-  const { filter, setFilter, referenceDate, setReferenceDate, colors, getCurrencySymbol, activeTab } = useAppContext();
+  const { filter, setFilter, referenceDate, setReferenceDate, colors, getCurrencySymbol, activeTab, selectedCategory, setSelectedCategory } = useAppContext();
   const allTransactions = useTransactions(null);
 
   const transactions = allTransactions.filter(t => {
@@ -124,19 +124,69 @@ export default function Chart() {
     const gapSize = total > 0 && breakdown.length > 1 ? 3 : 0;
 
     let currentOffset = 0;
-    const textValue = `${currencySymbol}${total.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
+
+    // Check if the selected category is in this breakdown
+    const selectedItem = selectedCategory ? breakdown.find(item => item.name === selectedCategory) : null;
+    const isCategorySelected = !!selectedItem;
+
+    const displayLabel = isCategorySelected ? selectedItem.name : label;
+    const displayTotal = isCategorySelected ? selectedItem.amount : total;
+
+    const textValue = `${currencySymbol}${displayTotal.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
     // Dynamically scale down font size when numbers grow
     const valFontSize = textValue.length > 9 ? 8.5 : textValue.length > 7 ? 10 : 12;
 
+    const handleSvgPress = (event) => {
+      const { locationX, locationY } = event.nativeEvent;
+      const dx = locationX - 50;
+      const dy = locationY - 50;
+      const distance = Math.sqrt(dx * dx + dy * dy);
+
+      // Tap on center resets filter
+      if (distance < 20) {
+        setSelectedCategory(null);
+        return;
+      }
+
+      // Tap outside chart bounds ignored
+      if (distance > 52) {
+        return;
+      }
+
+      let angle = Math.atan2(dy, dx) * (180 / Math.PI);
+      if (angle < 0) {
+        angle += 360;
+      }
+
+      // Align with -90 degree rotation (top start)
+      const adjustedAngle = (angle + 90) % 360;
+
+      let currentAngle = 0;
+      for (const item of breakdown) {
+        const sweepAngle = (item.amount / total) * 360;
+        if (adjustedAngle >= currentAngle && adjustedAngle < currentAngle + sweepAngle) {
+          if (selectedCategory === item.name) {
+            setSelectedCategory(null);
+          } else {
+            setSelectedCategory(item.name);
+          }
+          return;
+        }
+        currentAngle += sweepAngle;
+      }
+    };
+
     return (
-      <View style={styles.donutContainer}>
-        <Svg width="90" height="90" viewBox="0 0 90 90" style={styles.svgContainer}>
+      <Pressable style={styles.donutContainer} onPress={handleSvgPress}>
+        <Svg width="90" height="90" viewBox="0 0 90 90" pointerEvents="none">
           {breakdown.map((item, idx) => {
             const pct = (item.amount / total) * 100;
             const segmentCircumference = (item.amount / total) * circumference;
             const strokeDasharray = `${Math.max(0, segmentCircumference - gapSize)} ${circumference}`;
             const strokeDashoffset = -currentOffset;
             currentOffset += segmentCircumference;
+
+            const isDimmed = selectedCategory && selectedCategory !== item.name;
 
             return (
               <Circle
@@ -149,18 +199,23 @@ export default function Chart() {
                 fill="transparent"
                 strokeDasharray={strokeDasharray}
                 strokeDashoffset={strokeDashoffset}
+                opacity={isDimmed ? 0.35 : 1}
+                rotation={-90}
+                origin="45, 45"
               />
             );
           })}
         </Svg>
         
-        <View style={styles.centerTextContainer}>
-          <Text style={[styles.centerLabel, { color: colors.textSecondary }]}>{label}</Text>
+        <View style={styles.centerTextContainer} pointerEvents="none">
+          <Text style={[styles.centerLabel, { color: colors.textSecondary }]} numberOfLines={1}>
+            {displayLabel}
+          </Text>
           <Text style={[styles.centerValue, { color: colors.text, fontSize: valFontSize }]} numberOfLines={1}>
             {textValue}
           </Text>
         </View>
-      </View>
+      </Pressable>
     );
   };
 
@@ -361,14 +416,13 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
   },
   svgContainer: {
-    transform: [{ rotate: '-90deg' }],
+    // Rotation is now handled natively via SVG parameters to preserve gesture hit-box coordinates
   },
   centerTextContainer: {
     position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
     justifyContent: 'center',
     alignItems: 'center',
   },

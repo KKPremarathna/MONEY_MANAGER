@@ -4,12 +4,13 @@ import { useAppContext } from "../src/AppContext";
 import TransactionList from "../components/TransactionList";
 
 export default function Income() {
-  const { setActiveTab } = useAppContext();
+  const { setActiveTab, setSelectedCategory } = useAppContext();
 
   useFocusEffect(
     useCallback(() => {
       setActiveTab("Income");
-    }, [setActiveTab])
+      setSelectedCategory(null);
+    }, [setActiveTab, setSelectedCategory])
   );
 
   return <TransactionList type="income" />;
