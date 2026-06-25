@@ -27,6 +27,7 @@ export const transactions = sqliteTable('transactions', {
   categoryId: integer('category_id').references(() => categories.id),
   type: text('type', { enum: ['income', 'expense'] }).notNull(),
   currency: text('currency', { enum: ['USD', 'LKR'] }).notNull().default('LKR'),
+  receiptUri: text('receipt_uri'),
   synced: integer('synced', { mode: 'boolean' }).default(false),
 });
 

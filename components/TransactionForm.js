@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, StyleSheet, TouchableOpacity, ScrollView, Modal, FlatList } from 'react-native';
+import { View, Text, TextInput, StyleSheet, TouchableOpacity, ScrollView, Modal, FlatList, Image, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useCategories, insertTransaction, insertCategory, deleteCategory, getCategorySpentForMonth, getCategorySpentForDay } from '../src/db/queries';
 import { useNavigation } from '@react-navigation/native';
 import { useAppContext } from '../src/AppContext';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import { pickReceiptImage, analyzeReceipt, saveReceiptLocally, isGeminiConfigured, pickReceiptDocument } from '../src/services/receiptScanner';
 
 const PRESET_ICONS = [
   'cart-outline', 'bus-outline', 'fast-food-outline', 'shirt-outline', 
@@ -31,12 +32,87 @@ export default function TransactionForm({ type }) {
   const [date, setDate] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
 
+  // Receipt scanning states
+  const [receiptUri, setReceiptUri] = useState(null);
+  const [isScanning, setIsScanning] = useState(false);
+  const [scanStatus, setScanStatus] = useState('');
+  const [showSourcePicker, setShowSourcePicker] = useState(false);
+
   // Category management states
   const [isManaging, setIsManaging] = useState(false);
   const [isAddingCategory, setIsAddingCategory] = useState(false);
   const [customName, setCustomName] = useState('');
   const [customColor, setCustomColor] = useState(PRESET_COLORS[0]);
   const [customIcon, setCustomIcon] = useState(PRESET_ICONS[0]);
+
+  const handleScanReceipt = async (source) => {
+    setShowSourcePicker(false);
+    setIsScanning(true);
+    setScanStatus('Capturing image...');
+
+    try {
+      let fileUri;
+      if (source === 'document') {
+        fileUri = await pickReceiptDocument();
+      } else {
+        fileUri = await pickReceiptImage(source);
+      }
+
+      if (!fileUri) {
+        setIsScanning(false);
+        return;
+      }
+
+      setReceiptUri(fileUri);
+
+      if (isGeminiConfigured()) {
+        setScanStatus('Analyzing receipt with AI...');
+        const result = await analyzeReceipt(fileUri, categories);
+
+        // Auto-fill amount
+        if (result.amount !== null) {
+          setAmount(result.amount.toString());
+        }
+
+        // Auto-fill category
+        if (result.categoryName) {
+          const matchedCat = categories.find(
+            c => c.name.toLowerCase() === result.categoryName.toLowerCase()
+          );
+          if (matchedCat) {
+            setSelectedCategory(matchedCat.id);
+          }
+        }
+
+        // Auto-fill note
+        if (result.note) {
+          setNote(result.note);
+        }
+
+        // Auto-fill date
+        if (result.date) {
+          const parsedDate = new Date(result.date);
+          if (!isNaN(parsedDate.getTime()) && parsedDate <= new Date()) {
+            setDate(parsedDate);
+          }
+        }
+
+        setScanStatus('Done! Review and save.');
+      } else {
+        setScanStatus('Receipt attached (add Gemini API key for auto-fill)');
+      }
+    } catch (error) {
+      console.error('Scan receipt error:', error);
+      showAlert('Scan Error', error.message || 'Failed to scan receipt. Please try again.');
+    } finally {
+      setIsScanning(false);
+    }
+  };
+
+  const handleRemoveReceipt = () => {
+    setReceiptUri(null);
+    setScanStatus('');
+  };
 
   const handleSave = async () => {
     if (!amount || isNaN(amount) || !selectedCategory) {
@@ -47,12 +123,25 @@ export default function TransactionForm({ type }) {
     const addedAmount = parseFloat(amount);
 
     const performSave = async () => {
+      // Save receipt to persistent storage if attached
+      let persistedReceiptUri = null;
+      if (receiptUri) {
+        try {
+          // Use a temp ID since we don't have the transaction ID yet
+          const tempId = Date.now();
+          persistedReceiptUri = await saveReceiptLocally(receiptUri, tempId);
+        } catch (err) {
+          console.error('Failed to save receipt:', err);
+        }
+      }
+
       await insertTransaction({
         amount: addedAmount,
         note,
         categoryId: selectedCategory,
         type,
-        date
+        date,
+        receiptUri: persistedReceiptUri
       });
 
       navigation.getParent()?.goBack();
@@ -141,6 +230,62 @@ export default function TransactionForm({ type }) {
 
   return (
     <ScrollView style={[styles.container, { backgroundColor: colors.background }]} contentContainerStyle={{ paddingBottom: 40 }}>
+      
+      {/* Scan Receipt Button */}
+      <TouchableOpacity
+        style={[styles.scanButton, { backgroundColor: colors.primary + '12', borderColor: colors.primary + '40' }]}
+        onPress={() => setShowSourcePicker(true)}
+        activeOpacity={0.7}
+        disabled={isScanning}
+      >
+        {isScanning ? (
+          <View style={styles.scanningRow}>
+            <ActivityIndicator size="small" color={colors.primary} />
+            <Text style={[styles.scanStatusText, { color: colors.primary }]}>{scanStatus}</Text>
+          </View>
+        ) : (
+          <View style={styles.scanButtonContent}>
+            <View style={[styles.scanIconCircle, { backgroundColor: colors.primary }]}>
+              <Ionicons name="camera-outline" size={22} color="white" />
+            </View>
+            <View style={styles.scanTextGroup}>
+              <Text style={[styles.scanTitle, { color: colors.text }]}>Scan Receipt</Text>
+              <Text style={[styles.scanSubtitle, { color: colors.textSecondary }]}>
+                {isGeminiConfigured() ? 'Auto-fill from bill photo' : 'Attach a bill photo'}
+              </Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
+          </View>
+        )}
+      </TouchableOpacity>
+
+      {/* Receipt Preview */}
+      {receiptUri && !isScanning && (
+        <View style={[styles.receiptPreview, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          {receiptUri.toLowerCase().endsWith('.pdf') ? (
+            <View style={[styles.receiptThumbnail, { justifyContent: 'center', alignItems: 'center', backgroundColor: '#EF444420' }]}>
+              <Ionicons name="document-text" size={28} color="#EF4444" />
+            </View>
+          ) : (
+            <Image source={{ uri: receiptUri }} style={styles.receiptThumbnail} />
+          )}
+          <View style={styles.receiptInfo}>
+            <Text style={[styles.receiptLabel, { color: colors.text }]}>Receipt attached</Text>
+            {scanStatus ? (
+              <Text style={[styles.receiptStatus, { color: colors.primary }]} numberOfLines={1}>
+                {scanStatus}
+              </Text>
+            ) : null}
+          </View>
+          <TouchableOpacity
+            style={[styles.removeReceiptBtn, { backgroundColor: '#EF444420' }]}
+            onPress={handleRemoveReceipt}
+          >
+            <Ionicons name="close" size={16} color="#EF4444" />
+          </TouchableOpacity>
+        </View>
+      )}
+
       <View style={styles.inputGroup}>
         <Text style={[styles.label, { color: colors.textSecondary }]}>Amount</Text>
         <View style={[styles.inputWrapper, { borderColor: colors.border, backgroundColor: colors.card }]}>
@@ -272,6 +417,75 @@ export default function TransactionForm({ type }) {
         <Text style={styles.saveButtonText}>Save Transaction</Text>
       </TouchableOpacity>
 
+      {/* Source Picker Modal */}
+      <Modal
+        visible={showSourcePicker}
+        animationType="fade"
+        transparent={true}
+        onRequestClose={() => setShowSourcePicker(false)}
+      >
+        <View style={styles.sourcePickerOverlay}>
+          <View style={[styles.sourcePickerContent, { backgroundColor: colors.card }]}>
+            <Text style={[styles.sourcePickerTitle, { color: colors.text }]}>Scan Receipt</Text>
+            <Text style={[styles.sourcePickerSubtitle, { color: colors.textSecondary }]}>
+              Choose how to add your receipt
+            </Text>
+
+            <TouchableOpacity
+              style={[styles.sourceOption, { backgroundColor: colors.primary + '10', borderColor: colors.primary + '30' }]}
+              onPress={() => handleScanReceipt('camera')}
+            >
+              <View style={[styles.sourceOptionIcon, { backgroundColor: colors.primary }]}>
+                <Ionicons name="camera" size={24} color="white" />
+              </View>
+              <View style={styles.sourceOptionTextGroup}>
+                <Text style={[styles.sourceOptionTitle, { color: colors.text }]}>Take Photo</Text>
+                <Text style={[styles.sourceOptionDesc, { color: colors.textSecondary }]}>
+                  Capture the bill with camera
+                </Text>
+              </View>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.sourceOption, { backgroundColor: '#6366F110', borderColor: '#6366F130' }]}
+              onPress={() => handleScanReceipt('gallery')}
+            >
+              <View style={[styles.sourceOptionIcon, { backgroundColor: '#6366F1' }]}>
+                <Ionicons name="images" size={24} color="white" />
+              </View>
+              <View style={styles.sourceOptionTextGroup}>
+                <Text style={[styles.sourceOptionTitle, { color: colors.text }]}>Choose from Gallery</Text>
+                <Text style={[styles.sourceOptionDesc, { color: colors.textSecondary }]}>
+                  Select an existing photo
+                </Text>
+              </View>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.sourceOption, { backgroundColor: '#F59E0B10', borderColor: '#F59E0B30' }]}
+              onPress={() => handleScanReceipt('document')}
+            >
+              <View style={[styles.sourceOptionIcon, { backgroundColor: '#F59E0B' }]}>
+                <Ionicons name="document-text" size={24} color="white" />
+              </View>
+              <View style={styles.sourceOptionTextGroup}>
+                <Text style={[styles.sourceOptionTitle, { color: colors.text }]}>Choose PDF Document</Text>
+                <Text style={[styles.sourceOptionDesc, { color: colors.textSecondary }]}>
+                  Select a PDF file
+                </Text>
+              </View>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.cancelSourceBtn, { borderColor: colors.border }]}
+              onPress={() => setShowSourcePicker(false)}
+            >
+              <Text style={[styles.cancelSourceText, { color: colors.textSecondary }]}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
       {/* Add Custom Category Modal */}
       <Modal
         visible={isAddingCategory}
@@ -353,6 +567,83 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 10,
   },
+  // Scan Receipt Button
+  scanButton: {
+    borderWidth: 1.5,
+    borderStyle: 'dashed',
+    borderRadius: 16,
+    padding: 14,
+    marginBottom: 16,
+  },
+  scanButtonContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  scanIconCircle: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  scanTextGroup: {
+    flex: 1,
+  },
+  scanTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    marginBottom: 2,
+  },
+  scanSubtitle: {
+    fontSize: 12,
+  },
+  scanningRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 6,
+  },
+  scanStatusText: {
+    fontSize: 14,
+    fontWeight: '600',
+    marginLeft: 10,
+  },
+  // Receipt Preview
+  receiptPreview: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 10,
+    borderRadius: 14,
+    borderWidth: 1,
+    marginBottom: 14,
+  },
+  receiptThumbnail: {
+    width: 50,
+    height: 50,
+    borderRadius: 10,
+    backgroundColor: '#f0f0f0',
+  },
+  receiptInfo: {
+    flex: 1,
+    marginLeft: 12,
+  },
+  receiptLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  receiptStatus: {
+    fontSize: 11,
+    marginTop: 2,
+  },
+  removeReceiptBtn: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  // Existing styles
   inputGroup: {
     marginBottom: 12,
   },
@@ -459,7 +750,74 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
   },
-  // Modal Styles
+  // Source Picker Modal
+  sourcePickerOverlay: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    padding: 24,
+  },
+  sourcePickerContent: {
+    width: '100%',
+    borderRadius: 24,
+    padding: 24,
+    elevation: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.2,
+    shadowRadius: 12,
+  },
+  sourcePickerTitle: {
+    fontSize: 20,
+    fontWeight: '800',
+    textAlign: 'center',
+    marginBottom: 4,
+  },
+  sourcePickerSubtitle: {
+    fontSize: 13,
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  sourceOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 14,
+    borderRadius: 16,
+    borderWidth: 1,
+    marginBottom: 12,
+  },
+  sourceOptionIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 14,
+  },
+  sourceOptionTextGroup: {
+    flex: 1,
+  },
+  sourceOptionTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    marginBottom: 2,
+  },
+  sourceOptionDesc: {
+    fontSize: 12,
+  },
+  cancelSourceBtn: {
+    borderWidth: 1,
+    borderRadius: 14,
+    padding: 14,
+    alignItems: 'center',
+    marginTop: 4,
+  },
+  cancelSourceText: {
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  // Category Modal Styles
   modalOverlay: {
     flex: 1,
     justifyContent: 'flex-end',
@@ -519,4 +877,3 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   }
 });
-

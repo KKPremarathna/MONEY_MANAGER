@@ -3,6 +3,8 @@ import { db } from './index';
 import { transactions, categories, users, defaultCategories } from './schema';
 import { eq, desc, sum, gte, lte, and } from 'drizzle-orm';
 import { syncUp, deleteRemoteTransaction, deleteRemoteCategory } from './syncEngine';
+import { deleteReceiptLocally } from '../services/receiptScanner';
+import { syncReceiptToCloud, deleteReceiptFromCloud } from '../services/receiptSync';
 
 // Hook to get all transactions
 export function useTransactions(type = null) {
@@ -18,6 +20,7 @@ export function useTransactions(type = null) {
     date: transactions.date,
     note: transactions.note,
     type: transactions.type,
+    receiptUri: transactions.receiptUri,
     categoryName: categories.name,
     categoryIcon: categories.icon,
     categoryColor: categories.color,
@@ -64,17 +67,32 @@ export function useBalance() {
 }
 
 export async function insertTransaction(data) {
-  await db.insert(transactions).values({
+  const result = await db.insert(transactions).values({
     ...data,
     date: data.date || new Date(),
     synced: false
-  });
+  }).returning({ id: transactions.id });
   syncUp().catch(err => console.log('Sync up failed background:', err));
+
+  // Sync receipt to cloud in background if available
+  const insertedId = result?.[0]?.id;
+  if (data.receiptUri && insertedId) {
+    syncReceiptToCloud(data.receiptUri, insertedId)
+      .catch(err => console.log('Receipt cloud sync failed:', err));
+  }
+
+  return insertedId;
 }
 
-export async function deleteTransaction(id) {
+export async function deleteTransaction(id, receiptUri) {
   await db.delete(transactions).where(eq(transactions.id, id)).execute();
   deleteRemoteTransaction(id).catch(err => console.log('Remote delete failed background:', err));
+
+  // Clean up receipt files
+  if (receiptUri) {
+    deleteReceiptLocally(receiptUri).catch(err => console.log('Local receipt delete failed:', err));
+    deleteReceiptFromCloud(id).catch(err => console.log('Cloud receipt delete failed:', err));
+  }
 }
 
 export async function updateTransaction(id, data) {
@@ -83,6 +101,12 @@ export async function updateTransaction(id, data) {
     .where(eq(transactions.id, id))
     .execute();
   syncUp().catch(err => console.log('Sync up failed background:', err));
+
+  // Sync updated receipt to cloud if available
+  if (data.receiptUri) {
+    syncReceiptToCloud(data.receiptUri, id)
+      .catch(err => console.log('Receipt cloud sync failed:', err));
+  }
 }
 
 export function useCategories(type) {

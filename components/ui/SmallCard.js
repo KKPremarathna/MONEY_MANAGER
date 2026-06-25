@@ -3,7 +3,7 @@ import Text from "../Text";
 import { Ionicons } from "@expo/vector-icons";
 import { useAppContext } from "../../src/AppContext";
 
-export default function SmallCard({ category, icon, color, money, type }) {
+export default function SmallCard({ category, icon, color, money, type, hasReceipt }) {
   const { getCurrencySymbol, colors } = useAppContext();
   const currencySymbol = getCurrencySymbol();
 
@@ -16,6 +16,11 @@ export default function SmallCard({ category, icon, color, money, type }) {
       <View style={styles.leftGroup}>
         <View style={[styles.iconContainer, { backgroundColor: (color || colors.primary) + '15' }]}>
           <Ionicons name={icon || 'list'} size={20} color={color || colors.primary} />
+          {hasReceipt && (
+            <View style={styles.receiptBadge}>
+              <Ionicons name="receipt-outline" size={8} color="white" />
+            </View>
+          )}
         </View>
         <Text style={[styles.categoryText, { color: colors.text }]} numberOfLines={1}>
           {category}
@@ -77,6 +82,19 @@ const styles = StyleSheet.create({
     bottom: 12,
     width: 4,
     borderRadius: 2,
-  }
+  },
+  receiptBadge: {
+    position: 'absolute',
+    bottom: -2,
+    right: -2,
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: '#10B981',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1.5,
+    borderColor: 'white',
+  },
 });
 

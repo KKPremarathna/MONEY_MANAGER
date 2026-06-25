@@ -1,11 +1,13 @@
 import { useState } from "react";
-import { FlatList, View, StyleSheet, TouchableOpacity, Modal, TextInput, ScrollView, Pressable, Animated } from "react-native";
+import { FlatList, View, StyleSheet, TouchableOpacity, Modal, TextInput, ScrollView, Pressable, Animated, Image, Alert } from "react-native";
 import Text from "./Text";
 import { Ionicons } from "@expo/vector-icons";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import SmallCard from "./ui/SmallCard";
 import { useTransactions, useCategories, updateTransaction, deleteTransaction, getCategorySpentForMonth, getCategorySpentForDay } from "../src/db/queries";
 import { useAppContext } from "../src/AppContext";
+import { pickReceiptImage, saveReceiptLocally, deleteReceiptLocally, pickReceiptDocument } from "../src/services/receiptScanner";
+import * as Sharing from 'expo-sharing';
 
 function AnimatedCardItem({ item, colors, handleOpenDetails }) {
   const [scaleValue] = useState(new Animated.Value(1));
@@ -47,6 +49,7 @@ function AnimatedCardItem({ item, colors, handleOpenDetails }) {
           color={item.categoryColor || colors.text}
           money={item.amount}
           type={item.type}
+          hasReceipt={!!item.receiptUri}
         />
       </Animated.View>
     </Pressable>
@@ -67,6 +70,10 @@ export default function TransactionList({ type }) {
   const [editCategoryId, setEditCategoryId] = useState(null);
   const [editDate, setEditDate] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
+
+  // Receipt viewer states
+  const [showReceiptViewer, setShowReceiptViewer] = useState(false);
+  const [editReceiptUri, setEditReceiptUri] = useState(null);
 
   const transactions = allTransactions.filter(t => {
     if (selectedCategory && t.categoryName !== selectedCategory) {
@@ -98,6 +105,7 @@ export default function TransactionList({ type }) {
     setEditNote(item.note || "");
     setEditCategoryId(item.categoryId);
     setEditDate(item.date ? new Date(item.date) : new Date());
+    setEditReceiptUri(item.receiptUri || null);
   };
 
   const handleDelete = () => {
@@ -113,11 +121,55 @@ export default function TransactionList({ type }) {
           style: "destructive", 
           onPress: async () => {
             try {
-              await deleteTransaction(selectedTransaction.id);
+              await deleteTransaction(selectedTransaction.id, selectedTransaction.receiptUri);
               setSelectedTransaction(null);
             } catch (err) {
               showAlert("Error", "Failed to delete: " + err.message);
             }
+          }
+        }
+      ]
+    );
+  };
+
+  const handleAttachReceipt = () => {
+    Alert.alert('Attach Receipt', 'Choose source', [
+      { text: 'Gallery', onPress: async () => {
+          try {
+            const uri = await pickReceiptImage('gallery');
+            if (uri) {
+              const persistedUri = await saveReceiptLocally(uri, selectedTransaction.id);
+              setEditReceiptUri(persistedUri);
+            }
+          } catch (err) { showAlert("Error", err.message || "Failed to attach receipt."); }
+      }},
+      { text: 'PDF Document', onPress: async () => {
+          try {
+            const uri = await pickReceiptDocument();
+            if (uri) {
+              const persistedUri = await saveReceiptLocally(uri, selectedTransaction.id);
+              setEditReceiptUri(persistedUri);
+            }
+          } catch (err) { showAlert("Error", err.message || "Failed to attach document."); }
+      }},
+      { text: 'Cancel', style: 'cancel' }
+    ]);
+  };
+
+  const handleRemoveReceipt = () => {
+    showAlert(
+      "Remove Receipt",
+      "Are you sure you want to remove the attached receipt?",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Remove",
+          style: "destructive",
+          onPress: async () => {
+            if (editReceiptUri) {
+              await deleteReceiptLocally(editReceiptUri);
+            }
+            setEditReceiptUri(null);
           }
         }
       ]
@@ -144,7 +196,8 @@ export default function TransactionList({ type }) {
           amount: parsedAmount,
           note: editNote.trim(),
           categoryId: editCategoryId,
-          date: editDate
+          date: editDate,
+          receiptUri: editReceiptUri
         });
         setSelectedTransaction(null);
       } catch (err) {
@@ -274,6 +327,69 @@ export default function TransactionList({ type }) {
                 </View>
               ) : null}
 
+              {/* Receipt Section */}
+              <View style={styles.receiptSection}>
+                {editReceiptUri ? (
+                  <View style={[styles.receiptCard, { backgroundColor: colors.background, borderColor: colors.border }]}>
+                    {editReceiptUri.toLowerCase().endsWith('.pdf') ? (
+                      <TouchableOpacity
+                        onPress={async () => {
+                          if (await Sharing.isAvailableAsync()) {
+                            await Sharing.shareAsync(editReceiptUri);
+                          } else {
+                            showAlert("Error", "Sharing is not available on this device");
+                          }
+                        }}
+                        activeOpacity={0.8}
+                      >
+                        <View style={[styles.receiptThumbnailLarge, { justifyContent: 'center', alignItems: 'center', backgroundColor: '#EF444420' }]}>
+                          <Ionicons name="document-text" size={64} color="#EF4444" />
+                        </View>
+                        <View style={styles.receiptOverlay}>
+                          <Ionicons name="open-outline" size={16} color="white" />
+                          <Text style={styles.receiptOverlayText}>Open PDF</Text>
+                        </View>
+                      </TouchableOpacity>
+                    ) : (
+                      <TouchableOpacity
+                        onPress={() => setShowReceiptViewer(true)}
+                        activeOpacity={0.8}
+                      >
+                        <Image source={{ uri: editReceiptUri }} style={styles.receiptThumbnailLarge} />
+                        <View style={styles.receiptOverlay}>
+                          <Ionicons name="expand-outline" size={16} color="white" />
+                          <Text style={styles.receiptOverlayText}>View Receipt</Text>
+                        </View>
+                      </TouchableOpacity>
+                    )}
+                    <View style={styles.receiptActions}>
+                      <TouchableOpacity
+                        style={[styles.receiptActionBtn, { backgroundColor: '#6366F115' }]}
+                        onPress={handleAttachReceipt}
+                      >
+                        <Ionicons name="swap-horizontal-outline" size={14} color="#6366F1" />
+                        <Text style={[styles.receiptActionText, { color: '#6366F1' }]}>Replace</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={[styles.receiptActionBtn, { backgroundColor: '#EF444415' }]}
+                        onPress={handleRemoveReceipt}
+                      >
+                        <Ionicons name="trash-outline" size={14} color="#EF4444" />
+                        <Text style={[styles.receiptActionText, { color: '#EF4444' }]}>Remove</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                ) : (
+                  <TouchableOpacity
+                    style={[styles.attachReceiptBtn, { borderColor: colors.border, backgroundColor: colors.background }]}
+                    onPress={handleAttachReceipt}
+                  >
+                    <Ionicons name="camera-outline" size={20} color={colors.textSecondary} />
+                    <Text style={[styles.attachReceiptText, { color: colors.textSecondary }]}>Attach Receipt</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+
               {/* Amount Input */}
               <View style={styles.inputGroup}>
                 <Text style={[styles.label, { color: colors.textSecondary }]}>Amount</Text>
@@ -375,6 +491,35 @@ export default function TransactionList({ type }) {
           </View>
         </View>
       </Modal>
+
+      {/* Full-Screen Receipt Viewer */}
+      <Modal
+        visible={showReceiptViewer}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowReceiptViewer(false)}
+      >
+        <View style={styles.receiptViewerOverlay}>
+          <View style={styles.receiptViewerHeader}>
+            <TouchableOpacity
+              style={styles.receiptViewerClose}
+              onPress={() => setShowReceiptViewer(false)}
+            >
+              <Ionicons name="close" size={24} color="white" />
+            </TouchableOpacity>
+            <Text style={styles.receiptViewerTitle}>Receipt</Text>
+            <View style={{ width: 40 }} />
+          </View>
+
+          {editReceiptUri && (
+            <Image
+              source={{ uri: editReceiptUri }}
+              style={styles.receiptFullImage}
+              resizeMode="contain"
+            />
+          )}
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -434,6 +579,100 @@ const styles = StyleSheet.create({
     fontWeight: "500",
     flex: 1,
   },
+  // Receipt Section
+  receiptSection: {
+    marginBottom: 16,
+  },
+  receiptCard: {
+    borderRadius: 14,
+    borderWidth: 1,
+    overflow: 'hidden',
+  },
+  receiptThumbnailLarge: {
+    width: '100%',
+    height: 160,
+    backgroundColor: '#f0f0f0',
+  },
+  receiptOverlay: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 8,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    gap: 6,
+  },
+  receiptOverlayText: {
+    color: 'white',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  receiptActions: {
+    flexDirection: 'row',
+    gap: 8,
+    padding: 10,
+  },
+  receiptActionBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 8,
+    borderRadius: 10,
+    gap: 4,
+  },
+  receiptActionText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  attachReceiptBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 14,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderStyle: 'dashed',
+    gap: 8,
+  },
+  attachReceiptText: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  // Receipt Full-Screen Viewer
+  receiptViewerOverlay: {
+    flex: 1,
+    backgroundColor: '#000',
+  },
+  receiptViewerHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingTop: 50,
+    paddingHorizontal: 16,
+    paddingBottom: 12,
+  },
+  receiptViewerClose: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  receiptViewerTitle: {
+    color: 'white',
+    fontSize: 17,
+    fontWeight: '700',
+  },
+  receiptFullImage: {
+    flex: 1,
+    width: '100%',
+  },
+  // Input styles
   inputGroup: {
     marginBottom: 14,
   },
@@ -529,5 +768,3 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
 });
-
-
