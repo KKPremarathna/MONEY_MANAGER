@@ -1,5 +1,6 @@
 import './polyfill';
 import { useEffect, useState } from 'react';
+import { skipNextBackgroundLock, setSkipNextBackgroundLock } from './src/utils/lockManager';
 import { StatusBar } from "expo-status-bar";
 import { StyleSheet, Text, View, ActivityIndicator } from "react-native";
 import { NavigationContainer, DefaultTheme, DarkTheme } from "@react-navigation/native";
@@ -8,7 +9,11 @@ import { useMigrations } from 'drizzle-orm/expo-sqlite/migrator';
 import { AppState, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as LocalAuthentication from 'expo-local-authentication';
-import { useUserProfile } from './src/db/queries';
+import * as Notifications from 'expo-notifications';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useUserProfile, createUserProfile, updateUserProfile } from './src/db/queries';
+import { supabase, isSupabaseConfigured } from './src/db/supabase';
+import { syncDown } from './src/db/syncEngine';
 
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import BottomBarNavigator from "./Navigators/BottomBarNavigator";
@@ -16,7 +21,6 @@ import AddExpensesIncomes from "./screens/AddExpensesIncomes";
 import ProfileScreen from "./screens/Profile";
 import CurrenciesScreen from "./screens/Currencies";
 import ThemeSelectionScreen from "./screens/ThemeSelection";
-import RemindersScreen from "./screens/Reminders";
 import LoginScreen from "./screens/Login";
 import FontSizeScreen from "./screens/FontSize";
 
@@ -76,8 +80,14 @@ function AppContent() {
   // Monitor AppState foreground/background shifts
   useEffect(() => {
     const handleAppStateChange = (nextAppState) => {
-      if (nextAppState === 'background' && profile && profile.biometricsEnabled) {
-        setIsLocked(true);
+      if (nextAppState === 'active') {
+        if (skipNextBackgroundLock) {
+          setSkipNextBackgroundLock(false);
+        }
+      } else if (nextAppState === 'background' && profile && profile.biometricsEnabled) {
+        if (!skipNextBackgroundLock) {
+          setIsLocked(true);
+        }
       }
     };
 
@@ -87,30 +97,6 @@ function AppContent() {
     };
   }, [profile]);
 
-  if (profile && profile.biometricsEnabled && isLocked) {
-    return (
-      <View style={[styles.lockContainer, { backgroundColor: colors.background }]}>
-        <StatusBar style={theme === 'dark' ? 'light' : 'dark'} />
-        <View style={styles.lockContent}>
-          <View style={[styles.lockIconCircle, { backgroundColor: colors.primary + "15" }]}>
-            <Ionicons name="lock-closed" size={48} color={colors.primary} />
-          </View>
-          <Text style={[styles.lockTitle, { color: colors.text }]}>Money Manager Locked</Text>
-          <Text style={[styles.lockSubtitle, { color: colors.textSecondary }]}>
-            Authentication is required to view transaction details
-          </Text>
-          
-          <TouchableOpacity 
-            style={[styles.unlockBtn, { backgroundColor: colors.primary }]} 
-            onPress={authenticateUser}
-          >
-            <Ionicons name="finger-print" size={20} color="white" style={{ marginRight: 8 }} />
-            <Text style={styles.unlockBtnText}>Unlock App</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-    );
-  }
 
   const baseTheme = theme === 'dark' ? DarkTheme : DefaultTheme;
   const navigationTheme = {
@@ -174,11 +160,6 @@ function AppContent() {
             options={{ headerShown: false }}
           />
 
-          <Stack.Screen
-            name="Reminders"
-            component={RemindersScreen}
-            options={{ headerShown: false }}
-          />
 
           <Stack.Screen
             name="Login"
@@ -193,6 +174,29 @@ function AppContent() {
           />
         </Stack.Navigator>
       </NavigationContainer>
+
+      {profile && profile.biometricsEnabled && isLocked && (
+        <View style={[StyleSheet.absoluteFill, styles.lockContainer, { backgroundColor: colors.background, zIndex: 99999, elevation: 99999 }]}>
+          <StatusBar style={theme === 'dark' ? 'light' : 'dark'} />
+          <View style={styles.lockContent}>
+            <View style={[styles.lockIconCircle, { backgroundColor: colors.primary + "15" }]}>
+              <Ionicons name="lock-closed" size={48} color={colors.primary} />
+            </View>
+            <Text style={[styles.lockTitle, { color: colors.text }]}>Money Manager Locked</Text>
+            <Text style={[styles.lockSubtitle, { color: colors.textSecondary }]}>
+              Authentication is required to view transaction details
+            </Text>
+            
+            <TouchableOpacity 
+              style={[styles.unlockBtn, { backgroundColor: colors.primary }]} 
+              onPress={authenticateUser}
+            >
+              <Ionicons name="finger-print" size={20} color="white" style={{ marginRight: 8 }} />
+              <Text style={styles.unlockBtnText}>Unlock App</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
     </>
   );
 }

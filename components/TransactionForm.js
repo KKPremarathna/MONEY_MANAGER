@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, StyleSheet, TouchableOpacity, ScrollView, Modal, FlatList, Image, ActivityIndicator } from 'react-native';
+import { View, Text, TextInput, StyleSheet, TouchableOpacity, ScrollView, Modal, FlatList, Image, ActivityIndicator, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useCategories, insertTransaction, insertCategory, deleteCategory, getCategorySpentForMonth, getCategorySpentForDay } from '../src/db/queries';
 import { useNavigation } from '@react-navigation/native';
 import { useAppContext } from '../src/AppContext';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import { pickReceiptImage, analyzeReceipt, saveReceiptLocally, isGeminiConfigured, pickReceiptDocument } from '../src/services/receiptScanner';
+import { pickReceiptImage, saveReceiptLocally, pickReceiptDocument } from '../src/services/receiptScanner';
 
 const PRESET_ICONS = [
   'cart-outline', 'bus-outline', 'fast-food-outline', 'shirt-outline', 
@@ -64,43 +64,7 @@ export default function TransactionForm({ type }) {
       }
 
       setReceiptUri(fileUri);
-
-      if (isGeminiConfigured()) {
-        setScanStatus('Analyzing receipt with AI...');
-        const result = await analyzeReceipt(fileUri, categories);
-
-        // Auto-fill amount
-        if (result.amount !== null) {
-          setAmount(result.amount.toString());
-        }
-
-        // Auto-fill category
-        if (result.categoryName) {
-          const matchedCat = categories.find(
-            c => c.name.toLowerCase() === result.categoryName.toLowerCase()
-          );
-          if (matchedCat) {
-            setSelectedCategory(matchedCat.id);
-          }
-        }
-
-        // Auto-fill note
-        if (result.note) {
-          setNote(result.note);
-        }
-
-        // Auto-fill date
-        if (result.date) {
-          const parsedDate = new Date(result.date);
-          if (!isNaN(parsedDate.getTime()) && parsedDate <= new Date()) {
-            setDate(parsedDate);
-          }
-        }
-
-        setScanStatus('Done! Review and save.');
-      } else {
-        setScanStatus('Receipt attached (add Gemini API key for auto-fill)');
-      }
+      setScanStatus('Receipt attached successfully.');
     } catch (error) {
       console.error('Scan receipt error:', error);
       showAlert('Scan Error', error.message || 'Failed to scan receipt. Please try again.');
@@ -229,7 +193,11 @@ export default function TransactionForm({ type }) {
   };
 
   return (
-    <ScrollView style={[styles.container, { backgroundColor: colors.background }]} contentContainerStyle={{ paddingBottom: 40 }}>
+    <ScrollView 
+      style={[styles.container, { backgroundColor: colors.background }]} 
+      contentContainerStyle={{ paddingBottom: 40 }}
+      keyboardShouldPersistTaps="handled"
+    >
       
       {/* Scan Receipt Button */}
       <TouchableOpacity
@@ -249,9 +217,9 @@ export default function TransactionForm({ type }) {
               <Ionicons name="camera-outline" size={22} color="white" />
             </View>
             <View style={styles.scanTextGroup}>
-              <Text style={[styles.scanTitle, { color: colors.text }]}>Scan Receipt</Text>
+              <Text style={[styles.scanTitle, { color: colors.text }]}>Attach Receipt</Text>
               <Text style={[styles.scanSubtitle, { color: colors.textSecondary }]}>
-                {isGeminiConfigured() ? 'Auto-fill from bill photo' : 'Attach a bill photo'}
+                Attach a bill photo or PDF
               </Text>
             </View>
             <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
@@ -426,7 +394,7 @@ export default function TransactionForm({ type }) {
       >
         <View style={styles.sourcePickerOverlay}>
           <View style={[styles.sourcePickerContent, { backgroundColor: colors.card }]}>
-            <Text style={[styles.sourcePickerTitle, { color: colors.text }]}>Scan Receipt</Text>
+            <Text style={[styles.sourcePickerTitle, { color: colors.text }]}>Attach Receipt</Text>
             <Text style={[styles.sourcePickerSubtitle, { color: colors.textSecondary }]}>
               Choose how to add your receipt
             </Text>

@@ -324,7 +324,10 @@ export default function Chart() {
                 <Ionicons name="sparkles" size={18} color={colors.primary} />
                 <Text style={[styles.insightsTitle, { color: colors.text }]}>Local AI Insights</Text>
               </View>
-              <TouchableOpacity onPress={() => setShowAIModal(false)}>
+              <TouchableOpacity 
+                onPress={() => setShowAIModal(false)}
+                hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
+              >
                 <Ionicons name="close" size={20} color={colors.text} />
               </TouchableOpacity>
             </View>
@@ -335,7 +338,7 @@ export default function Chart() {
                   <View style={[styles.insightIconWrapper, { backgroundColor: insight.color + "15" }]}>
                     <Ionicons name={insight.icon} size={15} color={insight.color} />
                   </View>
-                  <Text style={[styles.insightText, { color: colors.text }]} numberOfLines={2}>
+                  <Text style={[styles.insightText, { color: colors.text }]}>
                     {insight.text}
                   </Text>
                 </View>
@@ -460,11 +463,19 @@ export default function Chart() {
 
       {filter !== 'all' && (
         <View style={styles.paginationRow}>
-          <TouchableOpacity style={[styles.navBtn, { borderColor: colors.border }]} onPress={handlePrevDate}>
+          <TouchableOpacity 
+            style={[styles.navBtn, { borderColor: colors.border }]} 
+            onPress={handlePrevDate}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
             <Ionicons name="chevron-back" size={20} color={colors.text} />
           </TouchableOpacity>
           <Text style={[styles.rangeLabel, { color: colors.text }]}>{getFormattedRange()}</Text>
-          <TouchableOpacity style={[styles.navBtn, { borderColor: colors.border }]} onPress={handleNextDate}>
+          <TouchableOpacity 
+            style={[styles.navBtn, { borderColor: colors.border }]} 
+            onPress={handleNextDate}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
             <Ionicons name="chevron-forward" size={20} color={colors.text} />
           </TouchableOpacity>
         </View>

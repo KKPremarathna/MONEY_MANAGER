@@ -1,4 +1,4 @@
-import { View, Image, StyleSheet, TouchableOpacity, Switch } from "react-native";
+import { View, Image, StyleSheet, TouchableOpacity, Switch, ScrollView } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAppContext } from "../src/AppContext";
 import Text from "../components/Text";
@@ -91,12 +91,6 @@ export default function Settings() {
       onToggle: handleToggleBiometrics
     },
     {
-      id: 'reminders',
-      label: 'Reminder Settings',
-      icon: 'notifications-outline',
-      onPress: () => navigation.navigate('Reminders')
-    },
-    {
       id: 'reset',
       label: 'Reset App Data',
       icon: 'trash-outline',
@@ -127,10 +121,13 @@ export default function Settings() {
   ];
 
   return (
-    <View style={[styles.rootContainer, { backgroundColor: colors.background, paddingTop: insets.top }]}>
-      <View style={styles.screenHeader}>
-        <Text style={[styles.screenTitle, { color: colors.text }]}>Settings</Text>
-        <Text style={[styles.screenSubtitle, { color: colors.textSecondary }]}>App preferences & profile</Text>
+    <ScrollView style={[styles.rootContainer, { backgroundColor: colors.background, paddingTop: insets.top }]} contentContainerStyle={{ paddingBottom: 40 }}>
+      <View style={[styles.screenHeader, { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end' }]}>
+        <View>
+          <Text style={[styles.screenTitle, { color: colors.text }]}>Settings</Text>
+          <Text style={[styles.screenSubtitle, { color: colors.textSecondary }]}>App preferences & profile</Text>
+        </View>
+        <Text style={[styles.versionText, { color: colors.textSecondary, marginBottom: 2 }]}>Version 01</Text>
       </View>
       <View style={styles.profileSection}>
         <View style={[styles.ImageContainer, { borderColor: colors.border, backgroundColor: colors.surface }]}>
@@ -189,7 +186,8 @@ export default function Settings() {
           </View>
         ))}
       </View>
-    </View>
+      
+    </ScrollView>
   );
 }
 
@@ -279,5 +277,14 @@ const styles = StyleSheet.create({
     height: 1,
     marginLeft: 64,
   },
+  versionContainer: {
+    alignItems: 'center',
+    marginTop: 24,
+    paddingBottom: 20,
+  },
+  versionText: {
+    fontSize: 12,
+    fontWeight: '500',
+    letterSpacing: 1,
+  },
 });
-

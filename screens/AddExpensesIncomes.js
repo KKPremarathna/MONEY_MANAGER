@@ -4,6 +4,8 @@ import {
   StyleSheet,
   Pressable,
   TouchableOpacity,
+  KeyboardAvoidingView,
+  Platform,
 } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons"; // For the top right icon
@@ -33,7 +35,10 @@ export default function AddExpensesIncomes() {
         onPress={() => navigation.goBack()}
       />
 
-      <View style={[styles.sheetContainer, { backgroundColor: colors.background }]}>
+      <KeyboardAvoidingView 
+        style={[styles.sheetContainer, { backgroundColor: colors.background }]}
+        behavior={Platform.OS === "ios" ? "padding" : "padding"}
+      >
         <View style={styles.header}>
           <TouchableOpacity onPress={() => navigation.goBack()}>
             <Text style={[styles.headerText, { color: colors.textSecondary }]}>Cancel</Text>
@@ -44,10 +49,10 @@ export default function AddExpensesIncomes() {
           </TouchableOpacity>
         </View>
 
-        <SafeAreaProvider>
+        <SafeAreaProvider style={{ flex: 1 }}>
           <TopBarNavigator initialRoute="Expenses" screen={transactionalTabs} />
         </SafeAreaProvider>
-      </View>
+      </KeyboardAvoidingView>
     </View>
   );
 }

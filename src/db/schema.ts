@@ -36,11 +36,7 @@ export const defaultCategories = [
   // Expenses
   { name: 'Food', type: 'expense', color: '#FF6B6B', icon: 'fast-food-outline' },
   { name: 'Transport', type: 'expense', color: '#4ECDC4', icon: 'bus-outline' },
-  { name: 'Phone', type: 'expense', color: '#45B7D1', icon: 'call-outline' },
-  { name: 'Entertainment', type: 'expense', color: '#96CEB4', icon: 'film-outline' },
-  { name: 'Shopping', type: 'expense', color: '#FFEEAD', icon: 'cart-outline' },
   { name: 'Education', type: 'expense', color: '#D4A5A5', icon: 'book-outline' },
-  { name: 'Travel', type: 'expense', color: '#9B59B6', icon: 'airplane-outline' },
   { name: 'Health', type: 'expense', color: '#FF9F43', icon: 'medkit-outline' },
   // Incomes
   { name: 'Salary', type: 'income', color: '#2ECC71', icon: 'cash-outline' },

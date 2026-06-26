@@ -3,12 +3,15 @@ import { View, Text, TextInput, StyleSheet, TouchableOpacity, Image, ActivityInd
 import * as ImagePicker from 'expo-image-picker';
 import { useUserProfile, updateUserProfile, createUserProfile, deleteUserProfile } from '../src/db/queries';
 import { useNavigation } from '@react-navigation/native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useAppContext } from '../src/AppContext';
 import { supabase, isSupabaseConfigured } from '../src/db/supabase';
 import { uploadAvatar, clearLocalData } from '../src/db/syncEngine';
+import { setSkipNextBackgroundLock } from '../src/utils/lockManager';
 
 export default function Profile() {
+  const insets = useSafeAreaInsets();
   const { colors, showAlert } = useAppContext();
   const profile = useUserProfile();
   const navigation = useNavigation();
@@ -16,15 +19,33 @@ export default function Profile() {
   const [name, setName] = useState('');
   const [imageUri, setImageUri] = useState(null);
   const [saving, setSaving] = useState(false);
+  const [isEmailVerified, setIsEmailVerified] = useState(false);
 
   useEffect(() => {
     if (profile) {
       setName(profile.name || '');
       setImageUri(profile.imageUri || null);
     }
+
+    const checkVerification = async () => {
+      if (isSupabaseConfigured() && profile?.email && profile.email !== 'local@offline.com') {
+        try {
+          const { data: { user } } = await supabase.auth.getUser();
+          if (user && user.email_confirmed_at) {
+            setIsEmailVerified(true);
+          } else {
+            setIsEmailVerified(false);
+          }
+        } catch (e) {
+          console.log("Failed to fetch verification status", e);
+        }
+      }
+    };
+    checkVerification();
   }, [profile]);
 
   const pickImage = async () => {
+    setSkipNextBackgroundLock(true);
     let result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,
@@ -88,8 +109,12 @@ export default function Profile() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <View style={[styles.header, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
-        <TouchableOpacity onPress={() => navigation.goBack()} disabled={saving}>
+      <View style={[styles.header, { backgroundColor: colors.surface, borderBottomColor: colors.border, paddingTop: insets.top + 15 }]}>
+        <TouchableOpacity 
+          onPress={() => navigation.goBack()} 
+          disabled={saving}
+          hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
+        >
           <Ionicons name="arrow-back" size={28} color={colors.text} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: colors.text }]}>Edit Profile</Text>
@@ -106,6 +131,9 @@ export default function Profile() {
           <View style={styles.editBadge}>
             <Ionicons name="camera" size={16} color="white" />
           </View>
+          {isSupabaseConfigured() && profile?.email && profile.email !== 'local@offline.com' && (
+            <View style={[styles.verificationBadge, { backgroundColor: isEmailVerified ? '#2ECC71' : '#E74C3C', borderColor: colors.background }]} />
+          )}
         </TouchableOpacity>
 
         {profile?.email && profile.email !== 'local@offline.com' && (
@@ -163,7 +191,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingTop: 50,
     paddingHorizontal: 20,
     paddingBottom: 20,
     borderBottomWidth: 1,
@@ -198,6 +225,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderWidth: 3,
     borderColor: 'white'
+  },
+  verificationBadge: {
+    position: 'absolute',
+    top: 5,
+    right: 5,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    borderWidth: 4,
+    zIndex: 10,
   },
   emailLabel: {
     fontSize: 12,

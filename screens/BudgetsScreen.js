@@ -12,7 +12,21 @@ import Text from "../components/Text";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useAppContext } from "../src/AppContext";
-import { useCategories, updateCategoryBudget, useTransactions } from "../src/db/queries";
+import { useCategories, updateCategoryBudget, useTransactions, insertCategory } from "../src/db/queries";
+
+const PRESET_ICONS = [
+  'cart-outline', 'bus-outline', 'fast-food-outline', 'shirt-outline', 
+  'heart-outline', 'gift-outline', 'barbell-outline', 'game-controller-outline', 
+  'book-outline', 'cash-outline', 'card-outline', 'trending-up-outline',
+  'home-outline', 'car-outline', 'medical-outline', 'school-outline',
+  'airplane-outline', 'paw-outline', 'cafe-outline', 'wine-outline'
+];
+
+const PRESET_COLORS = [
+  '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEEAD', 
+  '#D4A5A5', '#9B59B6', '#FF9F43', '#2ECC71', '#F1C40F', 
+  '#E67E22', '#1ABC9C', '#3B82F6', '#EC4899', '#6366F1'
+];
 
 export default function BudgetsScreen() {
   const insets = useSafeAreaInsets();
@@ -27,6 +41,31 @@ export default function BudgetsScreen() {
   const [editingCategory, setEditingCategory] = useState(null);
   const [budgetValue, setBudgetValue] = useState("");
   const [budgetType, setBudgetType] = useState("monthly"); // 'monthly', 'daily'
+
+  const [isAddingCategory, setIsAddingCategory] = useState(false);
+  const [customName, setCustomName] = useState('');
+  const [customColor, setCustomColor] = useState(PRESET_COLORS[0]);
+  const [customIcon, setCustomIcon] = useState(PRESET_ICONS[0]);
+
+  const handleCreateCategory = async () => {
+    if (!customName.trim()) {
+      showAlert("Error", "Category name cannot be empty.");
+      return;
+    }
+
+    try {
+      await insertCategory({
+        name: customName.trim(),
+        type: "expense",
+        color: customColor,
+        icon: customIcon
+      });
+      setCustomName('');
+      setIsAddingCategory(false);
+    } catch (error) {
+      showAlert("Error", "Failed to create category: " + error.message);
+    }
+  };
 
   // Calculate monthly & daily spending for all expense categories
   const rDate = new Date();
@@ -247,6 +286,18 @@ export default function BudgetsScreen() {
                 </View>
               </TouchableOpacity>
             ))}
+            
+            <TouchableOpacity 
+              style={[styles.categoryListItem, { borderTopWidth: 1, borderTopColor: colors.border, paddingVertical: 14, marginBottom: 4 }]}
+              onPress={() => setIsAddingCategory(true)}
+            >
+              <View style={styles.cardLeft}>
+                <View style={[styles.iconWrapper, { backgroundColor: colors.surface, borderStyle: 'dashed', borderWidth: 1, borderColor: colors.textSecondary }]}>
+                  <Ionicons name="add" size={18} color={colors.textSecondary} />
+                </View>
+                <Text style={[styles.categoryName, { color: colors.primary }]}>Add Custom Category</Text>
+              </View>
+            </TouchableOpacity>
           </View>
         </View>
       </ScrollView>
@@ -325,6 +376,78 @@ export default function BudgetsScreen() {
                 <Text style={[styles.btnText, { color: "white" }]}>Save</Text>
               </TouchableOpacity>
             </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Add Custom Category Modal */}
+      <Modal
+        visible={isAddingCategory}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setIsAddingCategory(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { backgroundColor: colors.background, padding: 0, overflow: 'hidden' }]}>
+            <View style={[styles.modalHeader, { padding: 20, borderBottomWidth: 1, borderBottomColor: colors.border }]}>
+              <TouchableOpacity onPress={() => setIsAddingCategory(false)}>
+                <Text style={{ color: colors.textSecondary, fontSize: 16 }}>Cancel</Text>
+              </TouchableOpacity>
+              <Text style={[styles.modalTitle, { color: colors.text, marginBottom: 0 }]}>New Category</Text>
+              <TouchableOpacity onPress={handleCreateCategory}>
+                <Text style={{ color: colors.primary, fontSize: 16, fontWeight: '700' }}>Create</Text>
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView contentContainerStyle={{ padding: 20 }}>
+              <Text style={[styles.modalLabel, { color: colors.textSecondary }]}>Name</Text>
+              <View style={[styles.inputWrapper, { borderColor: colors.border, backgroundColor: colors.card, marginBottom: 20 }]}>
+                <TextInput
+                  style={[styles.input, { color: colors.text }]}
+                  placeholder="Category Name"
+                  placeholderTextColor={colors.textSecondary}
+                  value={customName}
+                  onChangeText={setCustomName}
+                  maxLength={15}
+                />
+              </View>
+
+              <Text style={[styles.modalLabel, { color: colors.textSecondary }]}>Color</Text>
+              <View style={styles.presetsRow}>
+                {PRESET_COLORS.map((c) => (
+                  <TouchableOpacity
+                    key={c}
+                    style={[
+                      styles.colorBubble,
+                      { backgroundColor: c },
+                      customColor === c && { borderWidth: 3, borderColor: colors.text }
+                    ]}
+                    onPress={() => setCustomColor(c)}
+                  />
+                ))}
+              </View>
+
+              <Text style={[styles.modalLabel, { color: colors.textSecondary, marginTop: 20 }]}>Icon</Text>
+              <View style={styles.presetsRow}>
+                {PRESET_ICONS.map((i) => (
+                  <TouchableOpacity
+                    key={i}
+                    style={[
+                      styles.iconBubble,
+                      { backgroundColor: colors.card, borderColor: colors.border },
+                      customIcon === i && { backgroundColor: customColor, borderColor: customColor }
+                    ]}
+                    onPress={() => setCustomIcon(i)}
+                  >
+                    <Ionicons 
+                      name={i} 
+                      size={20} 
+                      color={customIcon === i ? 'white' : colors.text} 
+                    />
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </ScrollView>
           </View>
         </View>
       </Modal>
@@ -587,4 +710,34 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "700",
   },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  modalLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 8,
+  },
+  presetsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+  },
+  colorBubble: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+  },
+  iconBubble: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    borderWidth: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  }
 });
